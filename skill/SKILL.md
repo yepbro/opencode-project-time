@@ -10,13 +10,16 @@ using OpenCode's own session records. The source database is never modified.
 
 ## Guardrails
 
-- Open the database only through `scripts/collect.py`, which uses a `mode=ro`
+- This skill's base directory is the package's `skill/` directory. All paths
+  below are relative to it: `../scripts/` is the package's `scripts/` directory
+  and `../var/` is the package's output directory.
+- Open the database only through `../scripts/collect.py`, which uses a `mode=ro`
   SQLite URI and sets `PRAGMA query_only = ON`.
 - Never write to `~/.local/share/opencode/opencode.db`, its WAL, or its SHM
   file. If a task appears to require that, stop and ask the owner.
 - Do not change OpenCode configuration files while generating a report.
-- Generated JSON snapshots and reports belong in `var/` unless the owner names
-  another output directory.
+- Generated JSON snapshots and reports belong in `../var/` unless the owner
+  names another output directory.
 
 ## Workflow
 
@@ -34,19 +37,19 @@ using OpenCode's own session records. The source database is never modified.
 2. Collect a snapshot. Child sessions are included by default:
 
    ```sh
-   python3 scripts/collect.py --out var/current-snapshot.json
+   python3 ../scripts/collect.py --out ../var/current-snapshot.json
    ```
-
+   
    For a named project:
-
+   
    ```sh
-   python3 scripts/collect.py --project EunomiaSync --out var/eunomiasync-snapshot.json
+   python3 ../scripts/collect.py --project EunomiaSync --out ../var/eunomiasync-snapshot.json
    ```
-
+   
 3. Render the report:
-
+   
    ```sh
-   python3 scripts/report.py var/eunomiasync-snapshot.json --out var/eunomiasync-report.md
+   python3 ../scripts/report.py ../var/eunomiasync-snapshot.json --out ../var/eunomiasync-report.md
    ```
 
 4. Read the generated Markdown, report the headline numbers to the owner
