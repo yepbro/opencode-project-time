@@ -3,3 +3,5 @@ __pycache__/
 node_modules/
 tests/_tmp/
 var/
+.codegraphcontext/
+.opencode/
