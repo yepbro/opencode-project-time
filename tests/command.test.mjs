@@ -96,6 +96,10 @@ test('parseCommand maps arguments to report parameters', async () => {
       project: 'p1',
       directory: '/work/eunomia',
     })
+    assert.deepEqual(parseCommand('--dir "/home/brooks/Documents/Default Project"'), {
+      directory: '/home/brooks/Documents/Default Project',
+    })
+    assert.deepEqual(parseCommand('"Default Project"'), { project: 'Default Project' })
     assert.throws(() => parseCommand('--bogus'), /unknown argument.*Usage/)
     assert.throws(() => parseCommand('--since'), /ISO-8601/)
     assert.throws(() => parseCommand('--since tomorrow'), /ISO-8601/)

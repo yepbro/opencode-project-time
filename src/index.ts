@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const skillPath = fileURLToPath(new URL('../skill/SKILL.md', import.meta.url))
 const collectScript = resolve(root, 'scripts/collect.py')
 const renderScript = resolve(root, 'scripts/report.py')
-const namePattern = /^[A-Za-z0-9._/-]{1,160}$/
+const controlPattern = /[\u0000-\u001f\u007f]/
 const timePattern = /^[0-9TZ:+\-.]{1,40}$/
 const usage =
   '/project-time [PROJECT | --project NAME | --dir PATH] [--since ISO] [--until ISO] [--main-only]'
@@ -40,9 +40,9 @@ function optionString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.length > 0 ? value : fallback
 }
 
-function requireName(value: string | undefined, flag: string): string {
-  if (!value || !namePattern.test(value)) {
-    throw new Error(`${flag} must be a short name, id, or path-like token`)
+export function requireName(value: string | undefined, flag: string): string {
+  if (!value || value.length > 4096 || controlPattern.test(value)) {
+    throw new Error(`${flag} must be a non-empty name or path without control characters`)
   }
   return value
 }
@@ -54,8 +54,18 @@ function requireTime(value: string | undefined, flag: string): string {
   return value
 }
 
+export function tokenize(text: string): string[] {
+  const tokens: string[] = []
+  const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(text)) !== null) {
+    tokens.push(match[1] ?? match[2] ?? match[3])
+  }
+  return tokens
+}
+
 export function parseCommand(text: string): ReportRequest {
-  const tokens = text.trim().split(/\s+/).filter(Boolean)
+  const tokens = tokenize(text)
   const request: ReportRequest = {}
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
