@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { Plugin, Skill } from '@opencode/plugin'
@@ -15,7 +15,7 @@ type ReportInput = {
   project?: string
   since?: string
   until?: string
-  includeSubagents?: boolean
+  mainOnly?: boolean
 }
 
 function optionString(value: unknown, fallback: string): string {
@@ -55,33 +55,59 @@ export default Plugin.define({
           properties: {
             project: {
               type: 'string',
-              description: 'Project name, checkout basename, or OpenCode project id',
+              description:
+                'Project name, checkout basename, or OpenCode project id. Omit to use the current project.',
             },
             since: { type: 'string', description: 'ISO-8601 lower bound on session end' },
             until: { type: 'string', description: 'ISO-8601 upper bound on session start' },
-            includeSubagents: { type: 'boolean', description: 'Include child sessions in totals' },
+            mainOnly: {
+              type: 'boolean',
+              description: 'Exclude child sessions (all sessions are included by default)',
+            },
           },
-          required: ['project'],
           additionalProperties: false,
         },
         options: { namespace: 'time', codemode: true },
         execute: async (input, toolContext) => {
           const args = input as ReportInput
           const project = String(args.project ?? '').trim()
-          if (!/^[A-Za-z0-9._/-]{1,120}$/.test(project)) {
-            throw new Error('project must be a short name, id, or path-like token')
+          const locationDirectory = ctx.location.directory
+          let scopeArgs: string[]
+          let slug: string
+          if (project) {
+            if (!/^[A-Za-z0-9._/-]{1,120}$/.test(project)) {
+              throw new Error('project must be a short name, id, or path-like token')
+            }
+            scopeArgs = ['--project', project]
+            slug = project.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80)
+          } else {
+            if (!locationDirectory) {
+              throw new Error('cannot determine the current project; specify the project name')
+            }
+            scopeArgs = ['--dir', locationDirectory]
+            slug = basename(locationDirectory).replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80)
           }
-          const slug = project.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80)
           const snapshot = resolve(outputDir, `${slug}-snapshot.json`)
           const report = resolve(outputDir, `${slug}-report.md`)
-          const collectArgs = [collectScript, '--project', project, '--out', snapshot]
+          const collectArgs = [collectScript, ...scopeArgs, '--out', snapshot]
           if (defaultDb) collectArgs.push('--db', defaultDb)
           if (args.since) collectArgs.push('--since', args.since)
           if (args.until) collectArgs.push('--until', args.until)
-          if (args.includeSubagents) collectArgs.push('--include-subagents')
+          if (args.mainOnly) collectArgs.push('--main-only')
           if (toolContext.signal.aborted) throw new Error('aborted')
 
-          const first = await run('python3', collectArgs, { cwd: root, timeout: 120_000 })
+          let first: { stdout: string }
+          try {
+            first = await run('python3', collectArgs, { cwd: root, timeout: 120_000 })
+          } catch (error) {
+            const stderr =
+              error && typeof error === 'object' && 'stderr' in error
+                ? String((error as { stderr?: unknown }).stderr ?? '')
+                : ''
+            throw new Error(
+              `collector failed: ${stderr.trim() || (error instanceof Error ? error.message : String(error))}`,
+            )
+          }
           const second = await run('python3', [renderScript, snapshot, '--out', report], {
             cwd: root,
             timeout: 60_000,

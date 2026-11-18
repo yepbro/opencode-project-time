@@ -51,3 +51,28 @@ Decision:
 
 Consequences: snapshots from before this decision are not schema-compatible
 with the new renderer; regenerate them with `scripts/collect.py`.
+
+## D-003 — Default scope: current project and all sessions
+
+Context: the owner wants an ordinary request to cover the full effort on a
+project without extra flags. Earlier reports silently omitted child sessions,
+which understated the work.
+
+Decision:
+
+- Child sessions are included by default. `--include-subagents` is removed and
+  replaced by the opposite flag `--main-only`, which reproduces the old narrow
+  scope. The snapshot records `main_only`.
+- With no `--project` and no `--dir`, the collector resolves the current project
+  from the working directory using canonical worktrees, parent directories
+  named after the project, and recorded session directories.
+- If resolution fails, the collector returns an error telling the caller to ask
+  the owner which project to collect and pass it explicitly. The plugin tool
+  uses `ctx.location.directory` for the same purpose and surfaces collector
+  errors to the model.
+
+Consequences: a report for the current directory can be produced with no flags.
+Duplicate project ids that share one worktree are merged; home and root are
+skipped so no catch-all project hides a missing project. Genuinely ambiguous
+matches are errors, not guesses. Existing snapshots that lack `main_only`
+still render because the renderer does not read that field.

@@ -96,13 +96,63 @@ def connect_readonly(db_path: Path) -> sqlite3.Connection:
     return connection
 
 
+def detect_current_project(
+    connection: sqlite3.Connection, directory: Path
+) -> tuple[set[str], str] | None:
+    """Find the OpenCode project owning a directory, walking up its parents.
+
+    The nearest matching level wins. Several project ids may point at the same
+    worktree; they are merged, since OpenCode can create duplicate project rows.
+    Home and root are skipped so a catch-all project never hides a missing
+    project. A directory named after a worktree covers worktree checkouts.
+    """
+    projects = [
+        (row["id"], os.path.realpath(row["worktree"]))
+        for row in connection.execute("SELECT id, worktree FROM project")
+    ]
+    ignored = {os.path.realpath(Path.home()), "/"}
+    current = os.path.realpath(directory)
+    while current not in ignored:
+        found: dict[str, str] = {}
+        basename = os.path.basename(current).lower()
+        for project_id, worktree in projects:
+            if worktree in ignored:
+                continue
+            if worktree == current or (basename and os.path.basename(worktree).lower() == basename):
+                found[project_id] = worktree
+        for row in connection.execute(
+            "SELECT DISTINCT project_id, directory FROM session_v2 WHERE directory = ?",
+            (current,),
+        ):
+            project_id = row["project_id"]
+            canonical = next((path for pid, path in projects if pid == project_id), None)
+            found[project_id] = canonical or current
+        if found:
+            directories = set(found.values())
+            if len(directories) > 1:
+                raise CollectError(f"ambiguous current project for {directory}: {sorted(directories)}")
+            return set(found), directories.pop()
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
 def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> ProjectScope:
-    scope = ProjectScope(
-        names={name.lower() for name in args.project},
-        directories={os.path.realpath(path) for path in args.dir},
-    )
-    if not scope.names and not scope.directories:
-        raise CollectError("specify at least one --project or --dir")
+    names = {name.lower() for name in args.project}
+    directories = {os.path.realpath(path) for path in args.dir}
+    if not names and not directories:
+        current = detect_current_project(connection, Path.cwd())
+        if current is None:
+            raise CollectError(
+                "cannot determine the current project from the working directory; "
+                "tell the owner which project to collect and pass --project NAME or --dir PATH"
+            )
+        project_ids, worktree = current
+        return ProjectScope(project_ids=project_ids, directories={worktree})
+
+    scope = ProjectScope(names=names, directories=directories)
     for row in connection.execute("SELECT id, worktree, name FROM project"):
         worktree = os.path.realpath(row["worktree"])
         candidates = {
@@ -113,6 +163,11 @@ def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> P
         if scope.names & candidates:
             scope.project_ids.add(row["id"])
             scope.directories.add(worktree)
+    for directory in directories:
+        current = detect_current_project(connection, Path(directory))
+        if current:
+            scope.project_ids.update(current[0])
+            scope.directories.add(current[1])
     return scope
 
 
@@ -216,7 +271,7 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         created = int(row["time_created"])
         updated = int(row["time_updated"])
         is_subagent = row["parent_id"] is not None
-        if (is_subagent and not args.include_subagents) or not in_range(created, updated, args):
+        if (is_subagent and args.main_only) or not in_range(created, updated, args):
             continue
 
         started.append(created)
@@ -289,7 +344,7 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
             "since": iso(args.since) if args.since else None,
             "until": iso(args.until) if args.until else None,
         },
-        "include_subagents": args.include_subagents,
+        "main_only": args.main_only,
         "totals": totals,
         "days": [{"date": day, **values} for day, values in sorted(days.items())],
         "sessions": sorted(sessions, key=lambda item: item["created"] or ""),
@@ -322,8 +377,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--since", help="ISO-8601 lower bound on session end")
     parser.add_argument("--until", help="ISO-8601 upper bound on session start")
     parser.add_argument(
-        "--include-subagents", action="store_true",
-        help="Include child sessions in totals (normally reported separately)",
+        "--main-only", action="store_true",
+        help="Exclude child sessions from totals (all sessions are included by default)",
     )
     parser.add_argument("--out", type=Path, required=True, help="JSON snapshot to write")
     args = parser.parse_args(argv)

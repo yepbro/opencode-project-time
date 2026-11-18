@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+
 HOUR_MS = 3_600_000
 
 
@@ -29,7 +30,12 @@ def total_line(name: str, ms: int) -> str:
 
 def render(snapshot: dict[str, Any]) -> str:
     totals = snapshot["totals"]
-    scope = ", ".join(snapshot["project"]["names"]) or "selected directories"
+    names = snapshot["project"]["names"]
+    if not names:
+        names = [Path(path).name for path in snapshot["project"]["directories"]]
+    if not names:
+        names = snapshot["project"]["project_ids"]
+    scope = ", ".join(names) or "unknown project"
     period = f"{date_part(snapshot['range']['from'])} — {date_part(snapshot['range']['to'])}"
     lines = [
         "# Project time report",

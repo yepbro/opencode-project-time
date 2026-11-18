@@ -8,8 +8,8 @@
     },
     {
       "id": 2,
-      "prompt": "I need a time report for all of last week for the project whose checkout is /home/brooks/projects/business/EunomiaSync, including the agent child sessions.",
-      "expected_output": "Uses --dir with the checkout path, --since/--until for last week, and --include-subagents, then explains that main and child session windows are reported separately."
+      "prompt": "I need a time report for all of last week for the project whose checkout is /home/brooks/projects/business/EunomiaSync, but only the main sessions.",
+      "expected_output": "Uses --dir with the checkout path, --since/--until for last week, and --main-only, then explains that child sessions were excluded from this report."
     },
     {
       "id": 3,

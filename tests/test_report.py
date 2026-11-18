@@ -16,7 +16,7 @@ def snapshot(**overrides):
         "schema_version": 1,
         "project": {"names": ["EunomiaSync"], "project_ids": ["p1"], "directories": ["/work/eunomia"]},
         "range": {"from": "2026-01-01T23:50:00+00:00", "to": "2026-01-02T00:30:00+00:00"},
-        "include_subagents": False,
+        "main_only": False,
         "totals": {
             "exec_ms": 1_200_000,
             "busy_ms": 600_000,
@@ -67,6 +67,12 @@ class ReportTests(unittest.TestCase):
         self.assertIn("succeeded", text)
         self.assertNotIn("{{", text)
         self.assertNotIn("${", text)
+
+    def test_default_project_label_uses_directory_name(self) -> None:
+        data = snapshot(
+            project={"names": [], "project_ids": ["p1"], "directories": ["/work/eunomia"]}
+        )
+        self.assertIn("**Project:** eunomia", report.render(data))
 
     def test_empty_snapshot_renders_without_division_error(self) -> None:
         empty = snapshot(days=[], sessions=[])

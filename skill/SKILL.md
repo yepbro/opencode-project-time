@@ -22,12 +22,22 @@ using OpenCode's own session records. The source database is never modified.
 
 1. Choose the project filter.
 
+   - With no `--project` and no `--dir`, the collector resolves the **current
+     project** from the working directory. If it cannot identify one, it fails
+     with a message asking for the project name; relay that error to the owner
+     and ask which project to collect, then pass the answer explicitly.
    - `--project NAME` matches the project name, the checkout directory basename,
      or the project id in OpenCode's `project` table.
    - `--dir PATH` matches a canonical checkout; worktrees below it are included.
    - Repeat either flag to combine several projects or directories.
 
-2. Collect a snapshot:
+2. Collect a snapshot. Child sessions are included by default:
+
+   ```sh
+   python3 scripts/collect.py --out var/current-snapshot.json
+   ```
+
+   For a named project:
 
    ```sh
    python3 scripts/collect.py --project EunomiaSync --out var/eunomiasync-snapshot.json
@@ -45,9 +55,11 @@ using OpenCode's own session records. The source database is never modified.
 
 ## Optional flags
 
-- `--since` / `--until` accept ISO-8601 timestamps and filter sessions.
-- `--include-subagents` adds child sessions to the totals. By default they are
-  excluded from totals so parallel child work does not inflate time.
+- `--since` / `--until` accept ISO-8601 timestamps and filter sessions. With
+  neither flag, all recorded sessions are collected.
+- `--main-only` is the opposite of the default: it excludes child sessions and
+  leaves only main sessions. It exists for an explicitly narrower report; do
+  not add it to ordinary requests.
 - `--db PATH` overrides the default database location
   (`~/.local/share/opencode/opencode.db`).
 
@@ -75,6 +87,10 @@ summarizing a report with such rows.
 
 ## Troubleshooting
 
+- "cannot determine the current project": ask the owner which project to use,
+  then rerun with `--project NAME` or `--dir PATH`.
+- "ambiguous current project": more than one distinct checkout matched; ask the
+  owner and pass the exact `--project NAME` or `--dir PATH`.
 - "database not found": pass `--db` with the actual OpenCode database path.
 - Empty snapshot: check the spelling of `--project`, or use `--dir` with the
   canonical checkout path.

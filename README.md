@@ -22,28 +22,57 @@ its SHM file. The only files it writes are the JSON snapshot and Markdown report
 you pass with `--out`. OpenCode configuration files are not touched by this
 project.
 
+## Defaults
+
+- **Project:** the current project, resolved from the working directory (canonical
+  checkout, a parent directory named after the project, or a recorded session
+  directory). If it cannot be identified, the collector exits with an error that
+  asks for the project name explicitly. `--project NAME` or `--dir PATH` override
+  the default; both flags may be repeated.
+- **Period:** all recorded sessions. `--since` and `--until` accept ISO-8601
+  timestamps and narrow the selection.
+- **Child sessions:** included. Use `--main-only` when a report should contain
+  only main sessions; this is the only flag that reduces the default scope.
+
 ## Usage without the plugin
 
+Current project, all sessions:
+
 ```sh
-python3 scripts/collect.py --project EunomiaSync --out var/eunomiasync-snapshot.json
-python3 scripts/report.py var/eunomiasync-snapshot.json --out var/eunomiasync-report.md
+python3 scripts/collect.py --out var/current-snapshot.json
+python3 scripts/report.py var/current-snapshot.json --out var/current-report.md
+```
+
+Named project and period, main sessions only:
+
+```sh
+python3 scripts/collect.py --project EunomiaSync \
+  --since 2026-11-17T00:00:00Z --until 2026-11-18T23:59:59Z \
+  --main-only --out var/eunomiasync-main-snapshot.json
+python3 scripts/report.py var/eunomiasync-main-snapshot.json \
+  --out var/eunomiasync-main-report.md
 ```
 
 The `--project` value matches an OpenCode project name, a checkout directory
 basename, or a project id. Use `--dir PATH` to select a canonical checkout,
-including its worktrees. Repeat either flag to combine projects.
+including its worktrees. `--db PATH` overrides the database location.
 
-Other flags:
+## Example requests to the skill
 
-| Flag | Meaning |
+| Request | Effective parameters |
 | --- | --- |
-| `--db PATH` | Override the default OpenCode database path |
-| `--since`, `--until` | ISO-8601 bounds on session end and session start |
-| `--include-subagents` | Add child sessions to totals (excluded by default) |
+| "How long did we work on this project?" | current project, all sessions, child sessions included |
+| "Time report for EunomiaSync" | `--project EunomiaSync`, all sessions, child sessions included |
+| "Report for EunomiaSync for the last two days" | `--project EunomiaSync`, `--since`/`--until` for those days, child sessions included |
+| "Only main sessions on EunomiaSync, all time" | `--project EunomiaSync`, `--main-only` |
+
+When the project is not named and the current directory cannot be resolved, the
+skill should relay the error and ask the owner which project to collect.
 
 Use the plugin tool `time_project_report` (or `tools.time.project_report` in Code
-Mode) with `{"project":"EunomiaSync"}` to run both steps and get the report path.
-The `/project-time` command asks the model to use the skill.
+Mode). With no arguments it uses the plugin's current location as the project;
+it accepts `project`, `since`, `until`, and `mainOnly`. The `/project-time`
+command asks the model to use the skill.
 
 ## Metrics
 
