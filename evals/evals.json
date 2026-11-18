@@ -1,0 +1,20 @@
+{
+  "skill_name": "project-time-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How long did we actually work on EunomiaSync? Give me a per-day breakdown and save the report.",
+      "expected_output": "Runs the read-only collector and renderer for EunomiaSync, reports wall clock and execution time, and gives the paths of a JSON snapshot and a Markdown report in var/."
+    },
+    {
+      "id": 2,
+      "prompt": "I need a time report for all of last week for the project whose checkout is /home/brooks/projects/business/EunomiaSync, including the agent child sessions.",
+      "expected_output": "Uses --dir with the checkout path, --since/--until for last week, and --include-subagents, then explains that main and child session windows are reported separately."
+    },
+    {
+      "id": 3,
+      "prompt": "Compare wall clock with the time the assistant was really busy on EunomiaSync and explain why the numbers differ.",
+      "expected_output": "Produces the report, explains that wall clock includes waiting for prompts and restarts, that execution includes tool/shell waits, and that last busy window covers only the final execution."
+    }
+  ]
+}

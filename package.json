@@ -1,0 +1,23 @@
+{
+  "name": "opencode-project-time",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only OpenCode project time reports: plugin, skill, scripts, and report format",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "skill",
+    "scripts",
+    "tests",
+    "examples",
+    "README.md",
+    "REPORT_FORMAT.md",
+    "DECISIONS.md"
+  ],
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  }
+}
