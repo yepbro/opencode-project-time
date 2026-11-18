@@ -16,7 +16,10 @@
     "examples",
     "README.md",
     "REPORT_FORMAT.md",
-    "DECISIONS.md"
+    "DECISIONS.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md"
   ],
   "dependencies": {
     "@opencode/plugin": "latest"
