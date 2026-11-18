@@ -41,14 +41,14 @@ function optionString(value: unknown, fallback: string): string {
 }
 
 export function requireName(value: string | undefined, flag: string): string {
-  if (!value || value.length > 4096 || controlPattern.test(value)) {
+  if (!value || value.length > 4096 || controlPattern.test(value) || value.startsWith('--')) {
     throw new Error(`${flag} must be a non-empty name or path without control characters`)
   }
   return value
 }
 
 function requireTime(value: string | undefined, flag: string): string {
-  if (!value || !timePattern.test(value)) {
+  if (!value || value.startsWith('--') || !timePattern.test(value)) {
     throw new Error(`${flag} must be an ISO-8601 timestamp without spaces`)
   }
   return value

@@ -103,6 +103,8 @@ test('parseCommand maps arguments to report parameters', async () => {
     assert.throws(() => parseCommand('--bogus'), /unknown argument.*Usage/)
     assert.throws(() => parseCommand('--since'), /ISO-8601/)
     assert.throws(() => parseCommand('--since tomorrow'), /ISO-8601/)
+    assert.throws(() => parseCommand('--project --main-only'), /--project/)
+    assert.throws(() => parseCommand('--dir --since 2026-01-01T00:00:00Z'), /--dir/)
   } finally {
     fs.rmSync(harness.tmp, { recursive: true, force: true })
   }
