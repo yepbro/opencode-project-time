@@ -63,6 +63,19 @@ using OpenCode's own session records. The source database is never modified.
 - `--db PATH` overrides the default database location
   (`~/.local/share/opencode/opencode.db`).
 
+## Other entry points
+
+When the plugin is loaded, `/project-time` runs the same generator directly and
+posts the report path into the session. Its syntax is:
+
+```text
+/project-time [PROJECT | --project NAME | --dir PATH] [--since ISO] [--until ISO] [--main-only]
+```
+
+The tool `time_project_report` is the programmatic equivalent for agents; it
+accepts `project`, `directory`, `since`, `until`, and `mainOnly`. Both use the
+current plugin location when no project is given.
+
 ## Metrics and their meaning
 
 | Metric | Source | Includes |

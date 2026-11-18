@@ -76,3 +76,25 @@ Duplicate project ids that share one worktree are merged; home and root are
 skipped so no catch-all project hides a missing project. Genuinely ambiguous
 matches are errors, not guesses. Existing snapshots that lack `main_only`
 still render because the renderer does not read that field.
+
+## D-004 — Make the slash command a real entry point
+
+Context: `/project-time` only rewrote the user prompt and relied on the model
+deciding to invoke the skill. It had no argument parsing and no deterministic
+result.
+
+Decision:
+
+- Extract report generation into one exported `generateReport` function shared
+  by the tool and the command. Both write the same snapshot/report paths and
+  return the same description.
+- `parseCommand` accepts a positional project name plus `--project`, `--dir`,
+  `--since`, `--until`, and `--main-only`. Unknown or malformed arguments
+  produce a usage error instead of a report.
+- The command posts the result as a synthetic session message; it does not
+  start a model turn. OpenCode configuration is still not modified by this
+  repository.
+
+Consequences: the skill, the tool, and the command are three inputs to one
+mechanism. Node tests transpile the plugin with a stubbed SDK and a stub
+`python3` to verify parsing and flag propagation without loading the plugin.

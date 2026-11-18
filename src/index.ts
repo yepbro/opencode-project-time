@@ -10,24 +10,150 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const skillPath = fileURLToPath(new URL('../skill/SKILL.md', import.meta.url))
 const collectScript = resolve(root, 'scripts/collect.py')
 const renderScript = resolve(root, 'scripts/report.py')
+const namePattern = /^[A-Za-z0-9._/-]{1,160}$/
+const timePattern = /^[0-9TZ:+\-.]{1,40}$/
+const usage =
+  '/project-time [PROJECT | --project NAME | --dir PATH] [--since ISO] [--until ISO] [--main-only]'
 
-type ReportInput = {
+type ReportRequest = {
   project?: string
+  directory?: string
   since?: string
   until?: string
   mainOnly?: boolean
+}
+
+type ReportOptions = {
+  dbPath: string
+  outputDir: string
+  locationDirectory: string
+}
+
+type ReportResult = {
+  snapshot: string
+  report: string
+  collectorOutput: string
+  rendererOutput: string
 }
 
 function optionString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.length > 0 ? value : fallback
 }
 
+function requireName(value: string | undefined, flag: string): string {
+  if (!value || !namePattern.test(value)) {
+    throw new Error(`${flag} must be a short name, id, or path-like token`)
+  }
+  return value
+}
+
+function requireTime(value: string | undefined, flag: string): string {
+  if (!value || !timePattern.test(value)) {
+    throw new Error(`${flag} must be an ISO-8601 timestamp without spaces`)
+  }
+  return value
+}
+
+export function parseCommand(text: string): ReportRequest {
+  const tokens = text.trim().split(/\s+/).filter(Boolean)
+  const request: ReportRequest = {}
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]
+    if (token === '--main-only') {
+      request.mainOnly = true
+      continue
+    }
+    if (token === '--project') {
+      request.project = requireName(tokens[index + 1], '--project')
+      index += 1
+      continue
+    }
+    if (token === '--dir') {
+      request.directory = requireName(tokens[index + 1], '--dir')
+      index += 1
+      continue
+    }
+    if (token === '--since') {
+      request.since = requireTime(tokens[index + 1], '--since')
+      index += 1
+      continue
+    }
+    if (token === '--until') {
+      request.until = requireTime(tokens[index + 1], '--until')
+      index += 1
+      continue
+    }
+    if (!token.startsWith('-') && !request.project) {
+      request.project = requireName(token, 'PROJECT')
+      continue
+    }
+    throw new Error(`unknown argument "${token}". Usage: ${usage}`)
+  }
+  return request
+}
+
+export async function generateReport(
+  request: ReportRequest,
+  options: ReportOptions,
+): Promise<ReportResult> {
+  const directory = request.directory || (!request.project ? options.locationDirectory : '')
+  if (!request.project && !directory) {
+    throw new Error('cannot determine the current project; specify the project name or pass --dir')
+  }
+  if (request.project) requireName(request.project, 'project')
+  if (request.directory) requireName(request.directory, '--dir')
+  if (request.since) requireTime(request.since, 'since')
+  if (request.until) requireTime(request.until, 'until')
+
+  const slugSource = request.project || directory
+  const slug = basename(slugSource).replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80) || 'project'
+  const snapshot = resolve(options.outputDir, `${slug}-snapshot.json`)
+  const report = resolve(options.outputDir, `${slug}-report.md`)
+  const collectArgs = [
+    collectScript,
+    request.project ? '--project' : '--dir',
+    request.project || directory,
+    '--out',
+    snapshot,
+  ]
+  if (options.dbPath) collectArgs.push('--db', options.dbPath)
+  if (request.since) collectArgs.push('--since', request.since)
+  if (request.until) collectArgs.push('--until', request.until)
+  if (request.mainOnly) collectArgs.push('--main-only')
+
+  let collectorOutput: string
+  try {
+    collectorOutput = (
+      await run('python3', collectArgs, { cwd: root, timeout: 120_000 })
+    ).stdout.trim()
+  } catch (error) {
+    const stderr =
+      error && typeof error === 'object' && 'stderr' in error
+        ? String((error as { stderr?: unknown }).stderr ?? '')
+        : ''
+    throw new Error(
+      `collector failed: ${stderr.trim() || (error instanceof Error ? error.message : String(error))}`,
+    )
+  }
+  const rendererOutput = (
+    await run('python3', [renderScript, snapshot, '--out', report], { cwd: root, timeout: 60_000 })
+  ).stdout.trim()
+  return { snapshot, report, collectorOutput, rendererOutput }
+}
+
+function describe(result: ReportResult): string {
+  return `${result.collectorOutput}\n${result.rendererOutput}\nReport: ${result.report}\nSnapshot: ${result.snapshot}`
+}
+
 export default Plugin.define({
   id: 'opencode-project-time',
   async setup(ctx) {
     const options = (ctx.options ?? {}) as Record<string, unknown>
-    const defaultDb = optionString(options.dbPath, '')
-    const outputDir = resolve(root, optionString(options.outputDir, 'var'))
+    const reportOptions: ReportOptions = {
+      dbPath: optionString(options.dbPath, ''),
+      outputDir: resolve(root, optionString(options.outputDir, 'var')),
+      locationDirectory: ctx.location.directory,
+    }
     const skillContent = await readFile(skillPath, 'utf8')
 
     await ctx.skill.transform((editor) => {
@@ -58,6 +184,7 @@ export default Plugin.define({
               description:
                 'Project name, checkout basename, or OpenCode project id. Omit to use the current project.',
             },
+            directory: { type: 'string', description: 'Canonical checkout directory' },
             since: { type: 'string', description: 'ISO-8601 lower bound on session end' },
             until: { type: 'string', description: 'ISO-8601 upper bound on session start' },
             mainOnly: {
@@ -69,50 +196,9 @@ export default Plugin.define({
         },
         options: { namespace: 'time', codemode: true },
         execute: async (input, toolContext) => {
-          const args = input as ReportInput
-          const project = String(args.project ?? '').trim()
-          const locationDirectory = ctx.location.directory
-          let scopeArgs: string[]
-          let slug: string
-          if (project) {
-            if (!/^[A-Za-z0-9._/-]{1,120}$/.test(project)) {
-              throw new Error('project must be a short name, id, or path-like token')
-            }
-            scopeArgs = ['--project', project]
-            slug = project.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80)
-          } else {
-            if (!locationDirectory) {
-              throw new Error('cannot determine the current project; specify the project name')
-            }
-            scopeArgs = ['--dir', locationDirectory]
-            slug = basename(locationDirectory).replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80)
-          }
-          const snapshot = resolve(outputDir, `${slug}-snapshot.json`)
-          const report = resolve(outputDir, `${slug}-report.md`)
-          const collectArgs = [collectScript, ...scopeArgs, '--out', snapshot]
-          if (defaultDb) collectArgs.push('--db', defaultDb)
-          if (args.since) collectArgs.push('--since', args.since)
-          if (args.until) collectArgs.push('--until', args.until)
-          if (args.mainOnly) collectArgs.push('--main-only')
           if (toolContext.signal.aborted) throw new Error('aborted')
-
-          let first: { stdout: string }
-          try {
-            first = await run('python3', collectArgs, { cwd: root, timeout: 120_000 })
-          } catch (error) {
-            const stderr =
-              error && typeof error === 'object' && 'stderr' in error
-                ? String((error as { stderr?: unknown }).stderr ?? '')
-                : ''
-            throw new Error(
-              `collector failed: ${stderr.trim() || (error instanceof Error ? error.message : String(error))}`,
-            )
-          }
-          const second = await run('python3', [renderScript, snapshot, '--out', report], {
-            cwd: root,
-            timeout: 60_000,
-          })
-          return { content: `${first.stdout.trim()}\n${second.stdout.trim()}\nReport: ${report}` }
+          const result = await generateReport(input as ReportRequest, reportOptions)
+          return { content: describe(result) }
         },
       })
     })
@@ -120,14 +206,18 @@ export default Plugin.define({
     await ctx.command.transform((editor) => {
       editor.add({
         name: 'project-time',
-        description: 'Generate a read-only time report for an OpenCode project',
-        execute: async ({ sessionID, prompt, delivery }) => {
-          await ctx.session.prompt({
-            ...prompt,
-            sessionID,
-            text: `Use the project-time-report skill to generate a project time report. ${prompt.text}`.trim(),
-            delivery,
-          })
+        description: `Generate a read-only time report. Usage: ${usage}`,
+        execute: async ({ sessionID, prompt }) => {
+          try {
+            const result = await generateReport(parseCommand(prompt.text), reportOptions)
+            await ctx.session.synthetic({ sessionID, text: describe(result) })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            await ctx.session.synthetic({
+              sessionID,
+              text: `project-time: ${message}\nUsage: ${usage}`,
+            })
+          }
         },
       })
     })

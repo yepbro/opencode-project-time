@@ -69,10 +69,37 @@ including its worktrees. `--db PATH` overrides the database location.
 When the project is not named and the current directory cannot be resolved, the
 skill should relay the error and ask the owner which project to collect.
 
-Use the plugin tool `time_project_report` (or `tools.time.project_report` in Code
-Mode). With no arguments it uses the plugin's current location as the project;
-it accepts `project`, `since`, `until`, and `mainOnly`. The `/project-time`
-command asks the model to use the skill.
+## Plugin entry points
+
+All three entry points call the same generator; only the way of specifying
+parameters differs.
+
+- **Skill** — natural language, for example «How long did we work on this
+  project?». The skill drives `collect.py` and `report.py`.
+- **Tool** `time_project_report` (`tools.time.project_report` in Code Mode) —
+  for agents. It accepts `project`, `directory`, `since`, `until`, and
+  `mainOnly`; with no arguments it uses the plugin's current location.
+- **Command** `/project-time` — for the user, executes the report directly and
+  posts the file paths into the session as a synthetic message. No model turn
+  is required.
+
+Command syntax:
+
+```text
+/project-time [PROJECT | --project NAME | --dir PATH] [--since ISO] [--until ISO] [--main-only]
+```
+
+Examples:
+
+```text
+/project-time
+/project-time EunomiaSync
+/project-time --project EunomiaSync --since 2026-11-17T00:00:00Z --until 2026-11-18T00:00:00Z
+/project-time --dir /home/brooks/projects/business/EunomiaSync --main-only
+```
+
+`--main-only` reproduces the older narrow scope; the default includes child
+sessions. Invalid arguments produce a usage message instead of a report.
 
 ## Metrics
 
@@ -104,11 +131,16 @@ Optional plugin options: `dbPath`, `outputDir`.
 
 ```sh
 python3 -m unittest discover -s tests -v
+node --test tests/command.test.mjs
 ```
 
-The tests build a synthetic SQLite database with the relevant OpenCode tables.
-They check scope matching, worktree inclusion, daily splitting, subagent
-handling, time filters, the read-only guard, and the rendered Markdown.
+The Python tests build a synthetic SQLite database with the relevant OpenCode
+tables. They check scope matching, worktree inclusion, daily splitting,
+subagent handling, time filters, the read-only guard, and the rendered Markdown.
+The Node test transpiles `src/index.ts`, stubs `@opencode/plugin` and `python3`,
+then checks command argument parsing and that both entry points pass the right
+flags and write both output files. It needs the TypeScript compiler; set
+`TS_MODULE` if it is not resolvable by default.
 
 ## Validation data
 
