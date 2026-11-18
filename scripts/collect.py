@@ -114,20 +114,27 @@ def detect_current_project(
     ignored = {os.path.realpath(Path.home()), "/"}
     current = os.path.realpath(directory)
     while current not in ignored:
-        found: dict[str, str] = {}
         basename = os.path.basename(current).lower()
+        exact: dict[str, str] = {}
+        same_basename: dict[str, str] = {}
         for project_id, worktree in projects:
             if worktree in ignored:
                 continue
-            if worktree == current or (basename and os.path.basename(worktree).lower() == basename):
-                found[project_id] = worktree
-        for row in connection.execute(
-            "SELECT DISTINCT project_id, directory FROM session_v2 WHERE directory = ?",
-            (current,),
-        ):
-            project_id = row["project_id"]
-            canonical = next((path for pid, path in projects if pid == project_id), None)
-            found[project_id] = canonical or current
+            if worktree == current:
+                exact[project_id] = worktree
+            elif basename and os.path.basename(worktree).lower() == basename:
+                same_basename[project_id] = worktree
+        found = exact or same_basename
+        if not found:
+            for row in connection.execute(
+                "SELECT DISTINCT project_id, directory FROM session_v2 WHERE directory = ?",
+                (current,),
+            ):
+                project_id = row["project_id"]
+                canonical = next((path for pid, path in projects if pid == project_id), None)
+                if canonical in ignored:
+                    continue
+                found[project_id] = canonical or current
         if found:
             directories = set(found.values())
             if len(directories) > 1:
@@ -154,6 +161,7 @@ def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> P
         return ProjectScope(project_ids=project_ids, directories={worktree})
 
     scope = ProjectScope(names=names, directories=directories)
+    matched: dict[str, set[str]] = {}
     for row in connection.execute("SELECT id, worktree, name FROM project"):
         worktree = os.path.realpath(row["worktree"])
         candidates = {
@@ -164,11 +172,21 @@ def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> P
         if scope.names & candidates:
             scope.project_ids.add(row["id"])
             scope.directories.add(worktree)
-    for directory in directories:
-        current = detect_current_project(connection, Path(directory))
-        if current:
-            scope.project_ids.update(current[0])
-            scope.directories.add(current[1])
+            matched.setdefault(row["id"], set()).add(worktree)
+    worktrees = {worktree for paths in matched.values() for worktree in paths}
+    roots = [
+        worktree
+        for worktree in worktrees
+        if not any(
+            other != worktree and other.startswith(worktree.rstrip("/") + "/")
+            for other in worktrees
+        )
+    ]
+    if len(roots) > 1:
+        raise CollectError(
+            f"ambiguous project name for {sorted(names)}: {sorted(worktrees)}; "
+            "pass --dir PATH to choose a checkout"
+        )
     return scope
 
 

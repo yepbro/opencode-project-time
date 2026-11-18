@@ -114,6 +114,17 @@ def make_db(path: Path) -> None:
         connection.close()
 
 
+def add_project(path: Path, project_id: str, worktree: str, name: str) -> None:
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "INSERT INTO project VALUES (?, ?, ?)", (project_id, worktree, name)
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
 class CollectorTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(__file__).resolve().parents[0] / "_tmp"
@@ -231,6 +242,57 @@ class CollectorTests(unittest.TestCase):
         finally:
             connection.close()
         self.assertEqual(found, ({"p1"}, "/work/eunomia"))
+
+    def test_exact_worktree_wins_over_basename_matches(self) -> None:
+        add_project(self.db, "p3", "/other/eunomia", "Other Eunomia")
+        connection = collect.connect_readonly(self.db)
+        try:
+            found = collect.detect_current_project(connection, Path("/work/eunomia"))
+        finally:
+            connection.close()
+        self.assertEqual(found, ({"p1"}, "/work/eunomia"))
+
+    def test_explicit_dir_ignores_duplicate_basenames(self) -> None:
+        add_project(self.db, "p3", "/other/eunomia", "Other Eunomia")
+        code = collect.main(
+            ["--db", str(self.db), "--dir", "/work/eunomia", "--out", str(self.out)]
+        )
+        self.assertEqual(code, 0)
+        snapshot = json.loads(self.out.read_text(encoding="utf-8"))
+        self.assertEqual(
+            sorted(item["id"] for item in snapshot["sessions"]), ["child-1", "main-1"]
+        )
+
+    def test_ignored_global_worktree_does_not_cause_ambiguity(self) -> None:
+        add_project(self.db, "global", "/", "Global")
+        connection = sqlite3.connect(self.db)
+        try:
+            connection.execute(
+                "INSERT INTO session_v2 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "global-1", "global", None, "/work/scratch", "Global session",
+                    T0, T0 + MIN, None, None, None, 0, 0, 0, 0, 0, 0,
+                ),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        connection = collect.connect_readonly(self.db)
+        try:
+            found = collect.detect_current_project(connection, Path("/work/scratch"))
+        finally:
+            connection.close()
+        self.assertIsNone(found)
+
+    def test_ambiguous_project_name_is_rejected(self) -> None:
+        add_project(self.db, "p3", "/other/eunomia", "Other Eunomia")
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            code = collect.main(
+                ["--db", str(self.db), "--project", "eunomia", "--out", str(self.out)]
+            )
+        self.assertEqual(code, 2)
+        self.assertIn("ambiguous project name", stderr.getvalue())
 
     def test_missing_current_project_reports_error(self) -> None:
         stderr = io.StringIO()
