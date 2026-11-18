@@ -83,9 +83,8 @@ python3 -m unittest discover -s tests -v
 node --test tests/command.test.mjs
 ```
 
-The Node test needs a resolvable `typescript` module. If it is not installed,
-run `npm install --no-save typescript` or set `TS_MODULE` to the path of an
-existing TypeScript installation. The test stubs `@opencode/plugin` and
+The Node test uses the `typescript` dev dependency installed by `npm install`.
+Set `TS_MODULE` to override its location. The test stubs `@opencode/plugin` and
 `python3`, so it checks argument parsing and script invocation but not actual
 loading in OpenCode; use `opencode plugin list` and `/project-time` for that.
 

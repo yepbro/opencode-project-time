@@ -10,19 +10,11 @@ const require = createRequire(import.meta.url)
 const projectRoot = path.resolve(import.meta.dirname, '..')
 
 function loadTypescript() {
-  const candidates = [
-    process.env.TS_MODULE,
-    'typescript',
-    '/home/brooks/projects/business/EunomiaSync/node_modules/typescript',
-  ].filter(Boolean)
-  for (const candidate of candidates) {
-    try {
-      return require(candidate)
-    } catch {
-      continue
-    }
+  try {
+    return require(process.env.TS_MODULE || 'typescript')
+  } catch {
+    throw new Error('typescript is required; run npm install in the project root')
   }
-  throw new Error('typescript is required to run the plugin command tests')
 }
 
 function makeHarness() {

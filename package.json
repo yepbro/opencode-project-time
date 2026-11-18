@@ -8,6 +8,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v && node --test tests/command.test.mjs",
+    "test:node": "node --test tests/command.test.mjs"
+  },
   "files": [
     "src",
     "assets",
@@ -24,5 +28,8 @@
   ],
   "dependencies": {
     "@opencode/plugin": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
   }
 }

@@ -193,6 +193,8 @@ opencode plugin remove github:yepbro/opencode-project-time
 ## Tests
 
 ```sh
+npm test
+# or individually:
 python3 -m unittest discover -s tests -v
 node --test tests/command.test.mjs
 ```
@@ -203,8 +205,8 @@ per-day attribution of prompts, steps, tool calls, and tokens, subagent
 handling, time filters, the read-only guard, and the rendered Markdown.
 The Node test transpiles `src/index.ts`, stubs `@opencode/plugin` and `python3`,
 then checks command argument parsing and that both entry points pass the right
-flags and write both output files. It needs the TypeScript compiler; set
-`TS_MODULE` if it is not resolvable by default.
+flags and write both output files. The TypeScript compiler is a dev dependency
+installed by `npm install`; set `TS_MODULE` to override its location.
 
 ## Validation data
 
