@@ -10,7 +10,8 @@
   },
   "scripts": {
     "test": "python3 -m unittest discover -s tests -v && node --test tests/command.test.mjs",
-    "test:node": "node --test tests/command.test.mjs"
+    "test:node": "node --test tests/command.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "files": [
     "src",
@@ -31,6 +32,7 @@
     "@opencode/plugin": "latest"
   },
   "devDependencies": {
+    "@types/node": "^26.0.0",
     "typescript": "^6.0.3"
   }
 }
