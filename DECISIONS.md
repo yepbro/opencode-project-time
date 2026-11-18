@@ -98,3 +98,27 @@ Decision:
 Consequences: the skill, the tool, and the command are three inputs to one
 mechanism. Node tests transpile the plugin with a stubbed SDK and a stub
 `python3` to verify parsing and flag propagation without loading the plugin.
+
+## D-005 — GitHub repository settings
+
+Context: the owner wants changes to land only through pull requests that they
+accept, a linear `main` history, branch protection on `main`, and the ability to
+push directly as the repository owner.
+
+Decision:
+
+- Disable merge commits in the repository (`allow_merge_commit=false`); keep
+  squash and rebase merges available. Protect `main` with `required_linear_history=true`.
+- Require one approving review and dismiss stale reviews on `main`; force pushes
+  and branch deletion are disabled. The only collaborator is the owner, so only
+  they can approve and merge a PR.
+- Keep `enforce_admins=false`: on a personal repository the branch-protection
+  API rejects user/team restrictions and bypass allowances with "Only
+  organization repositories can have users and team restrictions" (HTTP 422),
+  so the owner's direct pushes are preserved by not applying the rules to
+  administrators.
+
+Consequences: other contributors must open a PR, and the merge methods cannot
+create a merge commit. If more collaborators are added, restrict approvals with
+a `CODEOWNERS` file and `require_code_owner_reviews=true`, or move the
+repository to an organization to use explicit bypass actors.
