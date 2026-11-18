@@ -326,6 +326,15 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(snapshot["sessions"], [])
         self.assertEqual(snapshot["totals"]["exec_ms"], 0)
 
+    def test_since_clips_execution_intervals(self) -> None:
+        since = int(datetime(2026, 1, 2, tzinfo=timezone.utc).timestamp() * 1000)
+        snapshot = self.run_collect("--since", datetime.fromtimestamp(since / 1000, timezone.utc).isoformat())
+        main = next(item for item in snapshot["sessions"] if item["id"] == "main-1")
+        self.assertLess(main["exec_ms"], 40 * MIN)
+        for day in snapshot["days"]:
+            if day["date"] < "2026-01-02":
+                self.assertEqual(day["exec_ms"], 0)
+
     def test_out_cannot_overwrite_database(self) -> None:
         stderr = io.StringIO()
         with redirect_stderr(stderr):

@@ -272,14 +272,23 @@ def new_day_bucket() -> dict[str, int]:
 
 
 def execution_intervals(
-    messages: list[sqlite3.Row], created: int, updated: int
+    messages: list[sqlite3.Row], created: int, updated: int, args: argparse.Namespace | None = None
 ) -> list[Interval]:
     """Rebuild execution windows from the message stream.
 
     An ``idle`` message ends an execution. Its start is the first assistant
     message since the previous idle, so tool waits stay inside the window and
-    time spent waiting for the next user prompt stays outside it.
+    time spent waiting for the next user prompt stays outside it. Each window
+    is clipped to the session lifetime and, when supplied, to ``--since`` and
+    ``--until``.
     """
+    low = created
+    high = updated
+    if args is not None:
+        if args.since is not None:
+            low = max(low, args.since)
+        if args.until is not None:
+            high = min(high, args.until)
     intervals: list[Interval] = []
     first_assistant: int | None = None
     for row in messages:
@@ -291,7 +300,7 @@ def execution_intervals(
             continue
         end = payload_time(row)
         if end is not None and first_assistant is not None and end > first_assistant:
-            clipped = Interval(first_assistant, end).clipped(created, updated)
+            clipped = Interval(first_assistant, end).clipped(low, high)
             if clipped:
                 intervals.append(clipped)
         first_assistant = None
@@ -338,7 +347,7 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         started.append(created)
         finished.append(updated)
         messages = message_rows(connection, row["id"])
-        intervals = execution_intervals(messages, created, updated)
+        intervals = execution_intervals(messages, created, updated, args)
         exec_ms = sum(item.end - item.start for item in intervals)
         busy = 0
         if row["time_busy"] is not None and row["time_idle"] is not None:
