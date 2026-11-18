@@ -207,6 +207,22 @@ class CollectorTests(unittest.TestCase):
         # child-1 is created that day with token usage: two active sessions.
         self.assertEqual(days["2026-01-02"]["sessions"], 2)
 
+    def test_null_numeric_columns_do_not_crash(self) -> None:
+        connection = sqlite3.connect(self.db)
+        try:
+            connection.execute(
+                "UPDATE session_v2 SET tokens_input = NULL, tokens_output = NULL, "
+                "tokens_reasoning = NULL, tokens_cache_read = NULL, "
+                "tokens_cache_write = NULL, cost = NULL WHERE id = 'main-1'"
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        snapshot = self.run_collect()
+        main = next(item for item in snapshot["sessions"] if item["id"] == "main-1")
+        self.assertEqual(main["tokens_input"], 0)
+        self.assertEqual(main["cost"], 0.0)
+
     def test_inactive_session_creates_no_day_row(self) -> None:
         silent = int(datetime(2026, 1, 5, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
         connection = sqlite3.connect(self.db)

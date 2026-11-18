@@ -68,6 +68,13 @@ def day_key(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).date().isoformat()
 
 
+def number(value: Any) -> int | float:
+    """Coerce a possibly-NULL database numeric column to a usable value."""
+    if value is None:
+        return 0
+    return value
+
+
 def split_by_day(intervals: Iterable[Interval]) -> dict[str, int]:
     """Attribute durations to UTC calendar days, splitting at midnight."""
     totals: dict[str, int] = {}
@@ -343,6 +350,8 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
     finished: list[int] = []
 
     for row in session_rows(connection, scope):
+        if row["time_created"] is None or row["time_updated"] is None:
+            continue
         created = int(row["time_created"])
         updated = int(row["time_updated"])
         is_subagent = row["parent_id"] is not None
@@ -437,12 +446,12 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
             "prompts": prompts,
             "steps": steps,
             "tool_calls": tools,
-            "tokens_input": int(row["tokens_input"]),
-            "tokens_output": int(row["tokens_output"]),
-            "tokens_reasoning": int(row["tokens_reasoning"]),
-            "tokens_cache_read": int(row["tokens_cache_read"]),
-            "tokens_cache_write": int(row["tokens_cache_write"]),
-            "cost": float(row["cost"]),
+            "tokens_input": int(number(row["tokens_input"])),
+            "tokens_output": int(number(row["tokens_output"])),
+            "tokens_reasoning": int(number(row["tokens_reasoning"])),
+            "tokens_cache_read": int(number(row["tokens_cache_read"])),
+            "tokens_cache_write": int(number(row["tokens_cache_write"])),
+            "cost": float(number(row["cost"])),
         })
 
         totals["exec_ms"] += exec_ms
@@ -452,12 +461,12 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         totals["prompts"] += prompts
         totals["steps"] += steps
         totals["tool_calls"] += tools
-        totals["tokens_input"] += int(row["tokens_input"])
-        totals["tokens_output"] += int(row["tokens_output"])
-        totals["tokens_reasoning"] += int(row["tokens_reasoning"])
-        totals["tokens_cache_read"] += int(row["tokens_cache_read"])
-        totals["tokens_cache_write"] += int(row["tokens_cache_write"])
-        totals["cost"] += float(row["cost"])
+        totals["tokens_input"] += int(number(row["tokens_input"]))
+        totals["tokens_output"] += int(number(row["tokens_output"]))
+        totals["tokens_reasoning"] += int(number(row["tokens_reasoning"]))
+        totals["tokens_cache_read"] += int(number(row["tokens_cache_read"]))
+        totals["tokens_cache_write"] += int(number(row["tokens_cache_write"]))
+        totals["cost"] += float(number(row["cost"]))
 
     return {
         "schema_version": 2,
@@ -529,7 +538,7 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out} ({len(snapshot['sessions'])} sessions)")
         return 0
-    except (CollectError, UnsafeOutputError, sqlite3.Error) as exc:
+    except (CollectError, UnsafeOutputError, sqlite3.Error, TypeError, ValueError) as exc:
         print(f"collect: {exc}", file=sys.stderr)
         return 2
 
