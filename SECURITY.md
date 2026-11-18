@@ -32,7 +32,9 @@ following as you can:
 
 Vulnerabilities that break the plugin's read-only guarantee are especially
 important: `scripts/collect.py` must open OpenCode's SQLite database with
-`mode=ro` and `PRAGMA query_only = ON`, and the only files written are the JSON
+`mode=ro` and `PRAGMA query_only = ON`, and must never modify database contents
+or committed WAL frames. SQLite may create or attach the read-only WAL-index
+(`-shm`) side file; the only files this project deliberately writes are the JSON
 snapshot and Markdown report passed with `--out`.
 
 ## Response Timeline

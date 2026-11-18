@@ -25,10 +25,12 @@ The package contains four parts:
 ## Safety
 
 `collect.py` opens `~/.local/share/opencode/opencode.db` with a `mode=ro` URI and
-enables `PRAGMA query_only = ON`. It never writes to the database, its WAL, or
-its SHM file. The only files it writes are the JSON snapshot and Markdown report
-you pass with `--out`. OpenCode configuration files are not touched by this
-project.
+enables `PRAGMA query_only = ON`. It never modifies database contents or
+committed WAL frames. SQLite may create or attach the read-only WAL-index
+(`-shm`) side file while reading, so a database in a directory without write
+permission may be unreadable. The only files this project writes are the JSON
+snapshot and Markdown report you pass with `--out`. OpenCode configuration files
+are not touched.
 
 ## Defaults
 

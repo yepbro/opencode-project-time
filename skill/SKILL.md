@@ -15,8 +15,10 @@ using OpenCode's own session records. The source database is never modified.
   and `../var/` is the package's output directory.
 - Open the database only through `../scripts/collect.py`, which uses a `mode=ro`
   SQLite URI and sets `PRAGMA query_only = ON`.
-- Never write to `~/.local/share/opencode/opencode.db`, its WAL, or its SHM
-  file. If a task appears to require that, stop and ask the owner.
+- Never modify `~/.local/share/opencode/opencode.db` or its committed WAL
+  frames. SQLite may create or attach a read-only `-shm` WAL-index file while
+  reading; that is expected and is not a violation. If a task appears to
+  require writing any of them, stop and ask the owner.
 - Do not change OpenCode configuration files while generating a report.
 - Generated JSON snapshots and reports belong in `../var/` unless the owner
   names another output directory.

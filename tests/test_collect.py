@@ -361,6 +361,18 @@ class ReadOnlyTests(unittest.TestCase):
             connection.close()
             db.unlink(missing_ok=True)
 
+    def test_open_failure_is_reported_clearly(self) -> None:
+        db = Path(__file__).resolve().parents[0] / "_tmp" / "unopenable.db"
+        db.parent.mkdir(exist_ok=True)
+        db.touch(exist_ok=True)
+        with mock.patch.object(
+            collect.sqlite3, "connect", side_effect=sqlite3.OperationalError("permission denied")
+        ):
+            with self.assertRaises(collect.CollectError) as caught:
+                collect.connect_readonly(db)
+        self.assertIn("cannot open database read-only", str(caught.exception))
+        db.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()

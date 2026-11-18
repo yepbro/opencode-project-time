@@ -88,12 +88,15 @@ def split_by_day(intervals: Iterable[Interval]) -> dict[str, int]:
 def connect_readonly(db_path: Path) -> sqlite3.Connection:
     if not db_path.is_file():
         raise CollectError(f"OpenCode database not found: {db_path}")
-    connection = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA query_only = ON")
-    if connection.execute("PRAGMA query_only").fetchone()[0] != 1:
-        connection.close()
-        raise CollectError("connection is not read-only; refusing to continue")
+    try:
+        connection = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA query_only = ON")
+        if connection.execute("PRAGMA query_only").fetchone()[0] != 1:
+            connection.close()
+            raise CollectError("connection is not read-only; refusing to continue")
+    except sqlite3.Error as exc:
+        raise CollectError(f"cannot open database read-only: {exc}") from exc
     return connection
 
 
