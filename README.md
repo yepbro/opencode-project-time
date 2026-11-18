@@ -213,8 +213,17 @@ installed by `npm install`; set `TS_MODULE` to override its location.
 
 ## Validation data
 
-The real-data check uses the EunomiaSync project from OpenCode's database. The
-generated snapshot and report are written to `var/` and are gitignored.
+The maintainer validates against a local OpenCode project named EunomiaSync;
+it is not shipped with this repository. To reproduce the check against one of
+your own projects, replace the name:
+
+```sh
+python3 scripts/collect.py --project EunomiaSync --out var/eunomiasync-snapshot.json
+python3 scripts/report.py var/eunomiasync-snapshot.json --out var/eunomiasync-report.md
+```
+
+Generated files go to `var/`, which is gitignored. Files written by the plugin
+itself carry a `YYYYMMDDHHMM` UTC stamp; these manual CLI examples do not.
 
 ## License
 

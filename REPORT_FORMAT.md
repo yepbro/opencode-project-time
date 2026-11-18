@@ -74,6 +74,8 @@ Execution time is split at UTC midnight. Prompts, steps, tool calls, and tokens 
 | 2026-01-01 | Second session | main | 20m | - |
 ```
 
-A complete generated example for EunomiaSync is written to
-`var/eunomiasync-report.md` during validation; that file is gitignored because
-it contains real session titles.
+A complete generated example for the maintainer's local EunomiaSync project is
+written to `var/eunomiasync-report.md` during manual validation; that file is
+gitignored because it contains real session titles. Reports written by the
+plugin itself carry a `YYYYMMDDHHMM` UTC stamp in the file name; these manual
+CLI examples do not.
