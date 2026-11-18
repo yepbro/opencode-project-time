@@ -70,6 +70,11 @@ def snapshot(**overrides):
 
 
 class ReportTests(unittest.TestCase):
+    def test_duration_rounds_half_up_and_promotes_sixty_minutes(self) -> None:
+        self.assertEqual(report.duration(150_000), "3m")
+        self.assertEqual(report.duration(3_570_000), "1.0h")
+        self.assertEqual(report.duration(3_599_999), "1.0h")
+
     def test_report_contains_expected_sections_and_values(self) -> None:
         text = report.render(snapshot())
         self.assertIn("# Project time report", text)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -15,10 +16,10 @@ HOUR_MS = 3_600_000
 
 
 def duration(ms: int) -> str:
-    hours = ms / HOUR_MS
-    if hours < 1:
-        return f"{round(hours * 60)}m"
-    return f"{hours:.1f}h"
+    minutes = math.floor(ms / 60_000 + 0.5)
+    if minutes < 60:
+        return f"{minutes}m"
+    return f"{minutes / 60:.1f}h"
 
 
 def date_part(iso: str | None) -> str:
