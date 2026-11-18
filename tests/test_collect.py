@@ -321,6 +321,11 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(snapshot["sessions"], [])
         self.assertEqual(snapshot["totals"]["exec_ms"], 0)
 
+    def test_snapshot_keeps_original_project_name(self) -> None:
+        snapshot = self.run_collect("--project", "EunomiaSync")
+        self.assertEqual(snapshot["project"]["display_name"], "EunomiaSync")
+        self.assertEqual(snapshot["project"]["names"], ["eunomiasync"])
+
     def test_time_filter_excludes_session(self) -> None:
         snapshot = self.run_collect("--since", "2026-02-01T00:00:00Z")
         self.assertEqual(snapshot["sessions"], [])

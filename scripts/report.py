@@ -32,7 +32,8 @@ def total_line(name: str, ms: int) -> str:
 
 def render(snapshot: dict[str, Any]) -> str:
     totals = snapshot["totals"]
-    names = snapshot["project"]["names"]
+    display = snapshot["project"].get("display_name")
+    names = [display] if display else snapshot["project"]["names"]
     if not names:
         names = [Path(path).name for path in snapshot["project"]["directories"]]
     if not names:

@@ -150,7 +150,9 @@ def detect_current_project(
     return None
 
 
-def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> ProjectScope:
+def resolve_scope(
+    connection: sqlite3.Connection, args: argparse.Namespace
+) -> tuple[ProjectScope, str | None]:
     names = {name.lower() for name in args.project}
     directories = {os.path.realpath(path) for path in args.dir}
     if not names and not directories:
@@ -161,9 +163,10 @@ def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> P
                 "tell the owner which project to collect and pass --project NAME or --dir PATH"
             )
         project_ids, worktree = current
-        return ProjectScope(project_ids=project_ids, directories={worktree})
+        return ProjectScope(project_ids=project_ids, directories={worktree}), os.path.basename(worktree)
 
     scope = ProjectScope(names=names, directories=directories)
+    display = args.project[0] if args.project else None
     matched: dict[str, set[str]] = {}
     for row in connection.execute("SELECT id, worktree, name FROM project"):
         worktree = os.path.realpath(row["worktree"])
@@ -190,7 +193,9 @@ def resolve_scope(connection: sqlite3.Connection, args: argparse.Namespace) -> P
             f"ambiguous project name for {sorted(names)}: {sorted(worktrees)}; "
             "pass --dir PATH to choose a checkout"
         )
-    return scope
+    if display is None and directories:
+        display = os.path.basename(next(iter(sorted(directories))))
+    return scope, display
 
 
 def session_rows(connection: sqlite3.Connection, scope: ProjectScope) -> list[sqlite3.Row]:
@@ -316,7 +321,7 @@ def in_range(start: int, end: int, args: argparse.Namespace) -> bool:
 
 
 def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[str, Any]:
-    scope = resolve_scope(connection, args)
+    scope, display_name = resolve_scope(connection, args)
     totals = {
         "exec_ms": 0,
         "busy_ms": 0,
@@ -458,6 +463,7 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         "schema_version": 2,
         "project": {
             "names": sorted(scope.names),
+            "display_name": display_name,
             "project_ids": sorted(scope.project_ids),
             "directories": sorted(scope.directories),
         },
