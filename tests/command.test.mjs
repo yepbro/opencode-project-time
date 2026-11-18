@@ -65,7 +65,13 @@ function makeHarness() {
     ].join('\n'),
   )
   fs.chmodSync(pythonStub, 0o755)
-  return { tmp, pluginFile, calls, bin }
+  const skillDir = path.join(tmp, 'skill')
+  fs.mkdirSync(skillDir, { recursive: true })
+  fs.writeFileSync(
+    path.join(skillDir, 'SKILL.md'),
+    '---\nname: X\ndescription: Y\n---\n\n# Body\n',
+  )
+  return { tmp, pluginFile, calls, bin, skillDir }
 }
 
 async function importPlugin(pluginFile) {
@@ -151,6 +157,29 @@ test('generateReport falls back to the plugin location directory', async () => {
     assert.match(call, /--dir \/work\/eunomia/)
   } finally {
     process.env.PATH = originalPath
+    fs.rmSync(harness.tmp, { recursive: true, force: true })
+  }
+})
+
+test('setup registers a skill without duplicated frontmatter', async () => {
+  const harness = makeHarness()
+  try {
+    const plugin = await importPlugin(harness.pluginFile)
+    let skill
+    const editor = { add: (definition) => { skill = definition } }
+    const ctx = {
+      options: {},
+      location: { directory: '/work/eunomia' },
+      skill: { transform: async (fn) => fn(editor) },
+      tool: { transform: async () => {} },
+      command: { transform: async () => {} },
+    }
+    await plugin.default.setup(ctx)
+    assert.ok(skill, 'skill must be registered')
+    assert.equal(skill.autoinvoke, true)
+    assert.doesNotMatch(skill.content, /^---/)
+    assert.match(skill.content, /# Body/)
+  } finally {
     fs.rmSync(harness.tmp, { recursive: true, force: true })
   }
 })

@@ -160,7 +160,8 @@ export default Plugin.define({
       outputDir: resolve(root, optionString(options.outputDir, 'var')),
       locationDirectory: ctx.location.directory,
     }
-    const skillContent = await readFile(skillPath, 'utf8')
+    const rawSkill = await readFile(skillPath, 'utf8')
+    const skillContent = rawSkill.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '')
 
     await ctx.skill.transform((editor) => {
       editor.add({
