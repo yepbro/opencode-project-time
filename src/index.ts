@@ -162,6 +162,7 @@ export default Plugin.define({
         name: Skill.Name.make('Project time report'),
         description:
           'Generate a read-only report of how much time OpenCode agents spent on a project, with execution time, daily breakdown, and session details.',
+        autoinvoke: true,
         path: Skill.Info.fields.path.make(skillPath),
         content: skillContent,
       })
