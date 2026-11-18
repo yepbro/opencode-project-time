@@ -118,8 +118,10 @@ test('generateReport uses parsed arguments and writes both files', async () => {
       { project: 'EunomiaSync', since: '2026-01-01T00:00:00Z', mainOnly: true },
       { dbPath: '/fake/opencode.db', outputDir: outDir, locationDirectory: '/ignored' },
     )
-    assert.equal(result.report, path.join(outDir, 'EunomiaSync-report.md'))
-    assert.equal(result.snapshot, path.join(outDir, 'EunomiaSync-snapshot.json'))
+    const stamp = result.report.match(/EunomiaSync-report-(\d{12})\.md$/)?.[1]
+    assert.ok(stamp, `report name must carry a YYYYMMDDHHII stamp: ${result.report}`)
+    assert.equal(result.report, path.join(outDir, `EunomiaSync-report-${stamp}.md`))
+    assert.equal(result.snapshot, path.join(outDir, `EunomiaSync-snapshot-${stamp}.json`))
     assert.match(result.collectorOutput, /wrote/)
     assert.ok(fs.existsSync(result.report))
     assert.ok(fs.existsSync(result.snapshot))
@@ -148,7 +150,11 @@ test('generateReport falls back to the plugin location directory', async () => {
       {},
       { dbPath: '', outputDir: outDir, locationDirectory: '/work/eunomia' },
     )
-    assert.equal(result.report, path.join(harness.tmp, 'var', 'eunomia-report.md'))
+    assert.match(result.report, /eunomia-report-\d{12}\.md$/)
+    assert.equal(
+      result.snapshot,
+      result.report.replace('-report-', '-snapshot-').replace(/\.md$/, '.json'),
+    )
     const call = fs.readFileSync(harness.calls, 'utf8').trim()
     assert.match(call, /--dir \/work\/eunomia/)
   } finally {

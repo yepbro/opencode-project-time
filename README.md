@@ -78,7 +78,10 @@ skill should relay the error and ask the owner which project to collect.
 ## Plugin entry points
 
 All three entry points call the same generator; only the way of specifying
-parameters differs.
+parameters differs. Generated files are named
+`<slug>-snapshot-<YYYYMMDDHHII>.json` and `<slug>-report-<YYYYMMDDHHII>.md`,
+where the stamp is the UTC generation time. Running the generator twice within
+the same minute overwrites the previous pair.
 
 - **Skill** — natural language, for example «How long did we work on this
   project?». The skill drives `collect.py` and `report.py`.

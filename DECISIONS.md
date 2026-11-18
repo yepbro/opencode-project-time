@@ -179,3 +179,21 @@ Consequences: day rows sum to the report totals for every column except
 Sessions, which is a per-day distinct count. Reports regenerated from old
 snapshots show zeros in the new day columns until the snapshot is recollected.
 
+## D-008 — Timestamp suffix on generated file names
+
+Context: reports from different runs landed under the same `var/<slug>-report.md`
+name, so a later run silently replaced an earlier one and a user could not tell
+which report belonged to which generation.
+
+Decision:
+
+- Add a `YYYYMMDDHHII` suffix from the UTC generation time to both generated
+  files: `<slug>-snapshot-<stamp>.json` and `<slug>-report-<stamp>.md`.
+- Use UTC for consistency with the report's UTC day buckets; minute precision
+  is enough for human ordering and keeps names short.
+- `generationStamp()` is exported and covered by the Node command tests, which
+  assert the format and that both files share one stamp.
+
+Consequences: old unstamped files in `var/` are left alone. Two runs in the same
+minute still overwrite each other; second-level precision was not requested.
+

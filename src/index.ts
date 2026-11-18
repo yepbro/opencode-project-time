@@ -92,6 +92,10 @@ export function parseCommand(text: string): ReportRequest {
   return request
 }
 
+export function generationStamp(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 16).replace(/[-:T]/g, '')
+}
+
 export async function generateReport(
   request: ReportRequest,
   options: ReportOptions,
@@ -107,8 +111,9 @@ export async function generateReport(
 
   const slugSource = request.project || directory
   const slug = basename(slugSource).replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 80) || 'project'
-  const snapshot = resolve(options.outputDir, `${slug}-snapshot.json`)
-  const report = resolve(options.outputDir, `${slug}-report.md`)
+  const stamp = generationStamp()
+  const snapshot = resolve(options.outputDir, `${slug}-snapshot-${stamp}.json`)
+  const report = resolve(options.outputDir, `${slug}-report-${stamp}.md`)
   const collectArgs = [
     collectScript,
     request.project ? '--project' : '--dir',
