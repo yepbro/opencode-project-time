@@ -198,3 +198,5 @@ generated snapshot and report are written to `var/` and are gitignored.
 
 MIT — see [LICENSE](LICENSE). The plugin uses the same permissive license as
 OpenCode itself and `@opencode/plugin`.
+
+Harness: OpenCode. Model: Hy4 Flash.
