@@ -193,20 +193,63 @@ test('setup registers a skill without duplicated frontmatter', async () => {
   try {
     const plugin = await importPlugin(harness.pluginFile)
     let skill
-    const editor = { add: (definition) => { skill = definition } }
+    let tool
+    let command
+    let namespace
+    const skillEditor = { add: (definition) => { skill = definition } }
+    const toolEditor = {
+      add: (definition) => { tool = definition },
+      namespace: (value) => { namespace = value },
+    }
+    const commandEditor = { add: (definition) => { command = definition } }
     const ctx = {
       options: {},
       location: { directory: '/work/eunomia' },
-      skill: { transform: async (fn) => fn(editor) },
-      tool: { transform: async () => {} },
-      command: { transform: async () => {} },
+      skill: { transform: async (fn) => fn(skillEditor) },
+      tool: { transform: async (fn) => fn(toolEditor) },
+      command: { transform: async (fn) => fn(commandEditor) },
+      session: { synthetic: async () => {} },
     }
     await plugin.default.setup(ctx)
     assert.ok(skill, 'skill must be registered')
     assert.equal(skill.autoinvoke, true)
     assert.doesNotMatch(skill.content, /^---/)
     assert.match(skill.content, /# Body/)
+    assert.deepEqual(namespace, { name: 'time', description: 'Read-only reports of agent time spent on OpenCode projects' })
+    assert.equal(tool.name, 'project_report')
+    assert.deepEqual(tool.options, { namespace: 'time', codemode: true })
+    assert.equal(command.name, 'project-time')
+    assert.match(command.description, /agent time report/)
   } finally {
+    fs.rmSync(harness.tmp, { recursive: true, force: true })
+  }
+})
+
+test('command executor posts a synthetic result and handles usage errors', async () => {
+  const harness = makeHarness()
+  const originalPath = process.env.PATH
+  try {
+    process.env.PATH = `${harness.bin}${path.delimiter}${originalPath}`
+    const plugin = await importPlugin(harness.pluginFile)
+    let command
+    const messages = []
+    const ctx = {
+      options: {},
+      location: { directory: '/work/eunomia' },
+      skill: { transform: async () => {} },
+      tool: { transform: async () => {} },
+      command: { transform: async (fn) => fn({ add: (d) => { command = d } }) },
+      session: { synthetic: async ({ text }) => { messages.push(text) } },
+    }
+    await plugin.default.setup(ctx)
+    await command.execute({ sessionID: 's1', prompt: { text: '--bogus' } })
+    assert.match(messages[0], /^project-time:/)
+    assert.match(messages[0], /Usage:/)
+    await command.execute({ sessionID: 's1', prompt: { text: 'p1' } })
+    assert.match(messages[1], /Report:/)
+    assert.match(messages[1], /Snapshot:/)
+  } finally {
+    process.env.PATH = originalPath
     fs.rmSync(harness.tmp, { recursive: true, force: true })
   }
 })
