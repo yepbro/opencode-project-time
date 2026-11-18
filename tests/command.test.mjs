@@ -165,6 +165,27 @@ test('generateReport falls back to the plugin location directory', async () => {
   }
 })
 
+test('generateReport forwards both project and directory when given', async () => {
+  const harness = makeHarness()
+  const originalPath = process.env.PATH
+  try {
+    process.env.PATH = `${harness.bin}${path.delimiter}${originalPath}`
+    const { generateReport } = await importPlugin(harness.pluginFile)
+    const outDir = path.join(harness.tmp, 'var')
+    fs.mkdirSync(outDir, { recursive: true })
+    await generateReport(
+      { project: 'p1', directory: '/work/eunomia' },
+      { dbPath: '', outputDir: outDir, locationDirectory: '/ignored' },
+    )
+    const call = fs.readFileSync(harness.calls, 'utf8').trim().split('\n')[0]
+    assert.match(call, /--project p1/)
+    assert.match(call, /--dir \/work\/eunomia/)
+  } finally {
+    process.env.PATH = originalPath
+    fs.rmSync(harness.tmp, { recursive: true, force: true })
+  }
+})
+
 test('setup registers a skill without duplicated frontmatter', async () => {
   const harness = makeHarness()
   try {

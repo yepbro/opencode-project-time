@@ -125,13 +125,14 @@ export async function generateReport(
   const stamp = generationStamp()
   const snapshot = resolve(options.outputDir, `${slug}-snapshot-${stamp}.json`)
   const report = resolve(options.outputDir, `${slug}-report-${stamp}.md`)
-  const collectArgs = [
-    collectScript,
-    request.project ? '--project' : '--dir',
-    request.project || directory,
-    '--out',
-    snapshot,
-  ]
+  const collectArgs = [collectScript]
+  if (request.project) collectArgs.push('--project', request.project)
+  if (request.directory) {
+    collectArgs.push('--dir', request.directory)
+  } else if (!request.project) {
+    collectArgs.push('--dir', directory)
+  }
+  collectArgs.push('--out', snapshot)
   if (options.dbPath) collectArgs.push('--db', options.dbPath)
   if (request.since) collectArgs.push('--since', request.since)
   if (request.until) collectArgs.push('--until', request.until)
