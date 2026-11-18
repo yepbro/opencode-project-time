@@ -1,5 +1,9 @@
 # opencode-project-time
 
+> **V2-only:** this plugin targets the OpenCode 2 plugin API (`@opencode/plugin`,
+> `Plugin.define`). It does not load in OpenCode 1. The standalone `collect.py`
+> and `report.py` scripts can still be run directly.
+
 An OpenCode plugin that reports how much time was spent on a project, using
 only read-only queries against OpenCode's local SQLite database.
 
