@@ -391,10 +391,10 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
                 message_token_sums[name] += value
 
         session_tokens = {
-            "input": int(row["tokens_input"]),
-            "output": int(row["tokens_output"]),
-            "reasoning": int(row["tokens_reasoning"]),
-            "cache_read": int(row["tokens_cache_read"]),
+            "input": int(number(row["tokens_input"])),
+            "output": int(number(row["tokens_output"])),
+            "reasoning": int(number(row["tokens_reasoning"])),
+            "cache_read": int(number(row["tokens_cache_read"])),
         }
         residual = {
             name: session_tokens[name] - message_token_sums[name] for name in session_tokens
