@@ -3,9 +3,22 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
-DEFAULT_DB = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+
+def default_db() -> Path:
+    """Resolve OpenCode's data directory, honoring XDG and platform conventions."""
+    if sys.platform == "darwin":
+        root = Path.home() / "Library" / "Application Support"
+    elif sys.platform == "win32":
+        root = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return root / "opencode" / "opencode.db"
+
+
+DEFAULT_DB = default_db()
 
 
 class UnsafeOutputError(Exception):
@@ -16,6 +29,10 @@ def database_paths(db: Path) -> tuple[Path, Path, Path]:
     """Return the database file and the two SQLite WAL side files."""
     resolved = db.resolve()
     return resolved, Path(f"{resolved}-wal"), Path(f"{resolved}-shm")
+
+
+def describe_default_db() -> str:
+    return str(DEFAULT_DB)
 
 
 def refuse_database_output(out: Path, db: Path) -> None:

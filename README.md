@@ -24,8 +24,11 @@ The package contains four parts:
 
 ## Safety
 
-`collect.py` opens `~/.local/share/opencode/opencode.db` with a `mode=ro` URI and
-enables `PRAGMA query_only = ON`. It never modifies database contents or
+`collect.py` opens OpenCode's SQLite database with a `mode=ro` URI and
+enables `PRAGMA query_only = ON`. By default the path is
+`~/.local/share/opencode/opencode.db` (`$XDG_DATA_HOME/opencode/opencode.db` on
+Linux, the platform application-data directory on macOS and Windows); override
+it with `--db`. It never modifies database contents or
 committed WAL frames. SQLite may create or attach the read-only WAL-index
 (`-shm`) side file while reading, so a database in a directory without write
 permission may be unreadable. The only files this project writes are the JSON
