@@ -111,7 +111,7 @@ test('generateReport uses parsed arguments and writes both files', async () => {
       { dbPath: '/fake/opencode.db', outputDir: outDir, locationDirectory: '/ignored' },
     )
     const stamp = result.report.match(/EunomiaSync-report-(\d{12})\.md$/)?.[1]
-    assert.ok(stamp, `report name must carry a YYYYMMDDHHII stamp: ${result.report}`)
+    assert.ok(stamp, `report name must carry a YYYYMMDDHHMM stamp: ${result.report}`)
     assert.equal(result.report, path.join(outDir, `EunomiaSync-report-${stamp}.md`))
     assert.equal(result.snapshot, path.join(outDir, `EunomiaSync-snapshot-${stamp}.json`))
     assert.match(result.collectorOutput, /wrote/)

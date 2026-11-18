@@ -83,7 +83,7 @@ skill should relay the error and ask the owner which project to collect.
 
 All three entry points call the same generator; only the way of specifying
 parameters differs. Generated files are named
-`<slug>-snapshot-<YYYYMMDDHHII>.json` and `<slug>-report-<YYYYMMDDHHII>.md`,
+`<slug>-snapshot-<YYYYMMDDHHMM>.json` and `<slug>-report-<YYYYMMDDHHMM>.md`,
 where the stamp is the UTC generation time. Running the generator twice within
 the same minute overwrites the previous pair.
 

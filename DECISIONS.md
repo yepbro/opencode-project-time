@@ -86,8 +86,8 @@ result.
 Decision:
 
 - Extract report generation into one exported `generateReport` function shared
-  by the tool and the command. Both write the same snapshot/report paths and
-  return the same description.
+  by the tool and the command. Both use the same generator and return the same
+  description; each invocation gets its own timestamped file names (D-008).
 - `parseCommand` accepts a positional project name plus `--project`, `--dir`,
   `--since`, `--until`, and `--main-only`. Unknown or malformed arguments
   produce a usage error instead of a report.
@@ -187,7 +187,7 @@ which report belonged to which generation.
 
 Decision:
 
-- Add a `YYYYMMDDHHII` suffix from the UTC generation time to both generated
+- Add a `YYYYMMDDHHMM` suffix from the UTC generation time to both generated
   files: `<slug>-snapshot-<stamp>.json` and `<slug>-report-<stamp>.md`.
 - Use UTC for consistency with the report's UTC day buckets; minute precision
   is enough for human ordering and keeps names short.
