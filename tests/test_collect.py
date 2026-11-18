@@ -264,6 +264,25 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(snapshot["sessions"], [])
         self.assertEqual(snapshot["totals"]["exec_ms"], 0)
 
+    def test_out_cannot_overwrite_database(self) -> None:
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            code = collect.main(
+                ["--db", str(self.db), "--project", "Nope", "--out", str(self.db)]
+            )
+        self.assertEqual(code, 2)
+        self.assertIn("refusing", stderr.getvalue())
+        self.assertTrue(self.db.read_bytes().startswith(b"SQLite format 3"))
+
+    def test_out_cannot_overwrite_database_sidecars(self) -> None:
+        for suffix in ("-wal", "-shm"):
+            target = Path(f"{self.db}{suffix}")
+            target.write_bytes(b"keep")
+            with redirect_stderr(io.StringIO()):
+                code = collect.main(["--db", str(self.db), "--out", str(target)])
+            self.assertEqual(code, 2)
+            self.assertEqual(target.read_bytes(), b"keep")
+
 
 class ReadOnlyTests(unittest.TestCase):
     def test_connection_rejects_writes(self) -> None:

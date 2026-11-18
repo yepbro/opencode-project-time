@@ -18,7 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-DEFAULT_DB = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+from paths import DEFAULT_DB, UnsafeOutputError, refuse_database_output
+
 MS_PER_DAY = 86_400_000
 
 
@@ -482,6 +483,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     try:
         args = parse_args(argv)
+        refuse_database_output(args.out, args.db)
         connection = connect_readonly(args.db)
         try:
             snapshot = collect(connection, args)
@@ -491,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out} ({len(snapshot['sessions'])} sessions)")
         return 0
-    except (CollectError, sqlite3.Error) as exc:
+    except (CollectError, UnsafeOutputError, sqlite3.Error) as exc:
         print(f"collect: {exc}", file=sys.stderr)
         return 2
 

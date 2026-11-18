@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
@@ -109,6 +114,18 @@ class ReportTests(unittest.TestCase):
         text = report.render(empty)
         self.assertIn("| Execution (reconstructed) | 0m |", text)
         self.assertIn("## By day (UTC)", text)
+
+    def test_out_cannot_overwrite_default_database(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "opencode.db"
+            original = b"SQLite format 3\0"
+            db.write_bytes(original)
+            source = Path(tmp) / "snapshot.json"
+            source.write_text(json.dumps(snapshot()), encoding="utf-8")
+            with mock.patch.object(report, "DEFAULT_DB", db), redirect_stderr(StringIO()):
+                code = report.main([str(source), "--out", str(db)])
+            self.assertEqual(code, 2)
+            self.assertEqual(db.read_bytes(), original)
 
 
 if __name__ == "__main__":

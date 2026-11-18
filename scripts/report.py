@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from paths import DEFAULT_DB, UnsafeOutputError, refuse_database_output
 
 HOUR_MS = 3_600_000
 
@@ -110,9 +111,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="Markdown report to write")
     args = parser.parse_args(argv)
     try:
+        refuse_database_output(args.out, DEFAULT_DB)
         snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        print(f"report: cannot read snapshot: {exc}", file=sys.stderr)
+    except (OSError, ValueError, UnsafeOutputError) as exc:
+        print(f"report: cannot write report: {exc}", file=sys.stderr)
         return 2
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render(snapshot), encoding="utf-8")
