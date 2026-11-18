@@ -122,3 +122,19 @@ Consequences: other contributors must open a PR, and the merge methods cannot
 create a merge commit. If more collaborators are added, restrict approvals with
 a `CODEOWNERS` file and `require_code_owner_reviews=true`, or move the
 repository to an organization to use explicit bypass actors.
+
+## D-006 — MIT license
+
+Context: the owner wants the most permissive license that does not conflict with
+OpenCode's rules. OpenCode and `@opencode/plugin` are MIT, and the plugin docs
+impose no additional licensing requirement.
+
+Decision:
+
+- Add a standard MIT `LICENSE` with copyright `2026 Den Brooks` and declare
+  `"license": "MIT"` in `package.json` so installed packages carry it.
+- Keep the attribution clause: it is the condition MIT itself requires and is
+  compatible with OpenCode's own license.
+
+Consequences: downstream users may use, modify, and redistribute the plugin,
+including commercially, provided they keep the copyright and permission notice.

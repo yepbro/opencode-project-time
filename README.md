@@ -193,3 +193,8 @@ flags and write both output files. It needs the TypeScript compiler; set
 
 The real-data check uses the EunomiaSync project from OpenCode's database. The
 generated snapshot and report are written to `var/` and are gitignored.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The plugin uses the same permissive license as
+OpenCode itself and `@opencode/plugin`.

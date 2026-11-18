@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Read-only reports of how much time OpenCode agents spent on a project: plugin, skill, scripts, and report format",
+  "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
   },
