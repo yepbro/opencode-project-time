@@ -99,6 +99,7 @@ export function generationStamp(date: Date = new Date()): string {
 export async function generateReport(
   request: ReportRequest,
   options: ReportOptions,
+  signal?: AbortSignal,
 ): Promise<ReportResult> {
   const directory = request.directory || (!request.project ? options.locationDirectory : '')
   if (!request.project && !directory) {
@@ -129,7 +130,7 @@ export async function generateReport(
   let collectorOutput: string
   try {
     collectorOutput = (
-      await run('python3', collectArgs, { cwd: root, timeout: 120_000 })
+      await run('python3', collectArgs, { cwd: root, timeout: 120_000, signal })
     ).stdout.trim()
   } catch (error) {
     const stderr =
@@ -141,7 +142,7 @@ export async function generateReport(
     )
   }
   const rendererOutput = (
-    await run('python3', [renderScript, snapshot, '--out', report], { cwd: root, timeout: 60_000 })
+    await run('python3', [renderScript, snapshot, '--out', report], { cwd: root, timeout: 60_000, signal })
   ).stdout.trim()
   return { snapshot, report, collectorOutput, rendererOutput }
 }
@@ -203,7 +204,7 @@ export default Plugin.define({
         options: { namespace: 'time', codemode: true },
         execute: async (input, toolContext) => {
           if (toolContext.signal.aborted) throw new Error('aborted')
-          const result = await generateReport(input as ReportRequest, reportOptions)
+          const result = await generateReport(input as ReportRequest, reportOptions, toolContext.signal)
           return { content: describe(result) }
         },
       })
