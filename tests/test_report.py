@@ -33,8 +33,18 @@ def snapshot(**overrides):
             "cost": 0.25,
         },
         "days": [
-            {"date": "2026-01-01", "exec_ms": 300_000, "steps": 1, "sessions": 1},
-            {"date": "2026-01-02", "exec_ms": 900_000, "steps": 1, "sessions": 1},
+            {
+                "date": "2026-01-01", "exec_ms": 300_000, "sessions": 1,
+                "prompts": 1, "steps": 1, "tool_calls": 2,
+                "tokens_input": 60, "tokens_output": 12,
+                "tokens_reasoning": 3, "tokens_cache_read": 600,
+            },
+            {
+                "date": "2026-01-02", "exec_ms": 900_000, "sessions": 2,
+                "prompts": 0, "steps": 1, "tool_calls": 1,
+                "tokens_input": 40, "tokens_output": 8,
+                "tokens_reasoning": 2, "tokens_cache_read": 400,
+            },
         ],
         "sessions": [
             {
@@ -61,12 +71,30 @@ class ReportTests(unittest.TestCase):
         self.assertIn("EunomiaSync", text)
         self.assertIn("| Execution (reconstructed) | 20m |", text)
         self.assertIn("| Last busy window | 10m |", text)
-        self.assertIn("| 2026-01-01 | 5m | 1 |", text)
-        self.assertIn("| 2026-01-02 | 15m | 1 |", text)
+        self.assertIn(
+            "| Day | Execution | Sessions | Prompts | Steps | Tool calls "
+            "| Tokens in | Tokens out | Reasoning | Cache read |",
+            text,
+        )
+        self.assertIn("| 2026-01-01 | 5m | 1 | 1 | 1 | 2 | 60 | 12 | 3 | 600 |", text)
+        self.assertIn("| 2026-01-02 | 15m | 2 | 0 | 1 | 1 | 40 | 8 | 2 | 400 |", text)
+        self.assertIn("| Total | 20m | 1 | 1 | 2 | 3 | 100 | 20 | 5 | 1,000 |", text)
+        self.assertIn("attributed to the UTC day of the message", text)
         self.assertIn("Session \\| with pipe", text)
         self.assertIn("succeeded", text)
         self.assertNotIn("{{", text)
         self.assertNotIn("${", text)
+
+    def test_legacy_day_rows_render_with_zero_defaults(self) -> None:
+        legacy = snapshot(
+            days=[
+                {"date": "2026-01-01", "exec_ms": 300_000, "steps": 1, "sessions": 1},
+            ]
+        )
+        text = report.render(legacy)
+        self.assertIn("| 2026-01-01 | 5m | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |", text)
+        self.assertIn("| Total | 20m | 1 | 1 | 2 | 3 | 100 | 20 | 5 | 1,000 |", text)
+
 
     def test_default_project_label_uses_directory_name(self) -> None:
         data = snapshot(

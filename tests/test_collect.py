@@ -63,7 +63,7 @@ def make_db(path: Path) -> None:
             (
                 "child-1", "p1", "main-1", "/work/eunomia/.worktrees/t-1", "Child session",
                 T0 + 50 * MIN, T0 + 55 * MIN, None, None, None,
-                0, 0, 0, 0, 0, 0,
+                30, 4, 1, 200, 0, 0,
             ),
         )
         connection.execute(
@@ -74,12 +74,33 @@ def make_db(path: Path) -> None:
                 0, 0, 0, 0, 0, 0,
             ),
         )
+        # m2 (T0+5min, 2026-01-01) carries two tool parts and token usage;
+        # m4 (T0+25min, 2026-01-02) carries one tool part and token usage.
+        # main-1's session totals equal the message sums, so its residual is
+        # zero; child-1 records tokens without any messages, so its whole
+        # total is the residual attributed to its creation day.
         for seq, (kind, ms, data) in enumerate(
             [
                 ("user", T0, "{}"),
-                ("assistant", T0 + 5 * MIN, "{}"),
+                (
+                    "assistant",
+                    T0 + 5 * MIN,
+                    json.dumps({
+                        "content": [{"type": "text"}, {"type": "tool"}, {"type": "tool"}],
+                        "tokens": {"input": 60, "output": 12, "reasoning": 3,
+                                   "cache": {"read": 600, "write": 6}},
+                    }),
+                ),
                 ("idle", T0 + 15 * MIN, json.dumps({"time": {"created": T0 + 15 * MIN}})),
-                ("assistant", T0 + 25 * MIN, "{}"),
+                (
+                    "assistant",
+                    T0 + 25 * MIN,
+                    json.dumps({
+                        "content": [{"type": "tool"}],
+                        "tokens": {"input": 40, "output": 8, "reasoning": 2,
+                                   "cache": {"read": 400, "write": 4}},
+                    }),
+                ),
                 ("idle", T0 + 35 * MIN, json.dumps({"time": {"created": T0 + 35 * MIN}})),
             ],
             start=1,
@@ -132,6 +153,67 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(set(days), {"2026-01-01", "2026-01-02"})
         self.assertEqual(days["2026-01-01"]["exec_ms"], 5 * MIN)
         self.assertEqual(days["2026-01-02"]["exec_ms"], 15 * MIN)
+
+    def test_day_rows_attribute_prompts_steps_and_tools_by_message_day(self) -> None:
+        days = {item["date"]: item for item in self.run_collect()["days"]}
+        # The user prompt and the first assistant step (two tool calls) belong
+        # to 2026-01-01; the second assistant step (one tool call) lands at
+        # 00:15 UTC on 2026-01-02, not on the session's creation day.
+        self.assertEqual(days["2026-01-01"]["prompts"], 1)
+        self.assertEqual(days["2026-01-01"]["steps"], 1)
+        self.assertEqual(days["2026-01-01"]["tool_calls"], 2)
+        self.assertEqual(days["2026-01-02"]["prompts"], 0)
+        self.assertEqual(days["2026-01-02"]["steps"], 1)
+        self.assertEqual(days["2026-01-02"]["tool_calls"], 1)
+
+    def test_day_tokens_use_message_data_with_residual_on_creation_day(self) -> None:
+        days = {item["date"]: item for item in self.run_collect()["days"]}
+        self.assertEqual(days["2026-01-01"]["tokens_input"], 60)
+        self.assertEqual(days["2026-01-01"]["tokens_output"], 12)
+        self.assertEqual(days["2026-01-01"]["tokens_reasoning"], 3)
+        self.assertEqual(days["2026-01-01"]["tokens_cache_read"], 600)
+        # child-1 records tokens in session_v2 but has no messages, so its
+        # whole total is a residual attributed to its creation day.
+        self.assertEqual(days["2026-01-02"]["tokens_input"], 40 + 30)
+        self.assertEqual(days["2026-01-02"]["tokens_output"], 8 + 4)
+        self.assertEqual(days["2026-01-02"]["tokens_reasoning"], 2 + 1)
+        self.assertEqual(days["2026-01-02"]["tokens_cache_read"], 400 + 200)
+
+    def test_day_rows_sum_to_report_totals(self) -> None:
+        snapshot = self.run_collect()
+        for key in (
+            "exec_ms", "prompts", "steps", "tool_calls",
+            "tokens_input", "tokens_output", "tokens_reasoning", "tokens_cache_read",
+        ):
+            self.assertEqual(
+                sum(day[key] for day in snapshot["days"]), snapshot["totals"][key], key
+            )
+
+    def test_day_sessions_count_sessions_with_activity(self) -> None:
+        days = {item["date"]: item for item in self.run_collect()["days"]}
+        self.assertEqual(days["2026-01-01"]["sessions"], 1)
+        # main-1 still executes and writes messages after midnight, and
+        # child-1 is created that day with token usage: two active sessions.
+        self.assertEqual(days["2026-01-02"]["sessions"], 2)
+
+    def test_inactive_session_creates_no_day_row(self) -> None:
+        silent = int(datetime(2026, 1, 5, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
+        connection = sqlite3.connect(self.db)
+        try:
+            connection.execute(
+                "INSERT INTO session_v2 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "silent-1", "p1", None, "/work/eunomia", "Silent session",
+                    silent, silent + MIN, None, None, None,
+                    0, 0, 0, 0, 0, 0,
+                ),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        days = {item["date"]: item for item in self.run_collect()["days"]}
+        self.assertNotIn("2026-01-05", days)
+
 
     def test_main_only_excludes_child_sessions(self) -> None:
         main_only = self.run_collect("--main-only")

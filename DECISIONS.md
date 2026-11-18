@@ -138,3 +138,44 @@ Decision:
 
 Consequences: downstream users may use, modify, and redistribute the plugin,
 including commercially, provided they keep the copyright and permission notice.
+
+## D-007 — Per-day attribution of prompts, steps, tool calls, and tokens
+
+Context: the owner wants the "By day (UTC)" table to carry the full metric
+set, not just execution time and session counts. Tokens live on `session_v2`
+rows while prompts, steps, and tool calls are derived from `session_message`,
+and attributing a session's totals to its creation day would put a
+day-spanning session's work on the wrong day. In the real database, assistant
+messages carry per-message usage in `data.tokens` (`input`, `output`,
+`reasoning`, `cache.read`), but the last step of an unfinished session can
+have `tokens: null`, so message sums do not always reproduce the session
+totals.
+
+Decision:
+
+- Prompts, steps, and tool calls are attributed to the UTC day of the message
+  (`session_message.time_created`); a message row without a timestamp falls
+  back to the session's creation timestamp so the counts still sum to the
+  totals.
+- Token usage is attributed to the day of the assistant message that records
+  it. The difference between a session's `session_v2` token totals and the
+  sum over its messages (unfinished last step, aborted message, missing
+  token data) is attributed to the session's creation day. Daily token sums
+  therefore equal the report totals exactly. `tokens_cache_write` stays a
+  report-total-only metric because the day table shows the same four token
+  kinds as the metadata bullets.
+- A day bucket exists only where a session had activity (execution, messages,
+  or a token remainder), so creation-only days no longer produce empty `0m/0`
+  rows. The day's Sessions value counts sessions with activity on that day;
+  a session spanning midnight counts on both days, so the column is not
+  additive and the table's Total row shows unique sessions (main plus
+  subagents).
+- Execution-time splitting at midnight is unchanged. Snapshot
+  `schema_version` becomes 2; day buckets gain `prompts`, `tool_calls`, and
+  the four token fields. Older snapshots still render — missing day fields
+  default to zero.
+
+Consequences: day rows sum to the report totals for every column except
+Sessions, which is a per-day distinct count. Reports regenerated from old
+snapshots show zeros in the new day columns until the snapshot is recollected.
+

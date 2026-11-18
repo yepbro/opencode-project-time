@@ -18,15 +18,20 @@ Execution time sums the intervals from the first assistant step to each `idle` m
 
 ## By day (UTC)
 
-| Day | Execution | Sessions |
-| --- | ---: | ---: |
-| 2026-01-01 | 1.0h | 2 |
+| Day | Execution | Sessions | Prompts | Steps | Tool calls | Tokens in | Tokens out | Reasoning | Cache read |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2026-01-01 | 40m | 2 | 3 | 12 | 4 | 700 | 60 | 12 | 3,000 |
+| 2026-01-02 | 20m | 1 | 1 | 8 | 3 | 300 | 40 | 8 | 2,000 |
+| Total | 1.0h | 2 | 4 | 20 | 7 | 1,000 | 100 | 20 | 5,000 |
+
+Execution time is split at UTC midnight. Prompts, steps, tool calls, and tokens are attributed to the UTC day of the message that produced them; when a session's recorded token totals exceed the sum of its messages (for example an unfinished last step), the remainder is attributed to the session's creation day. Sessions counts sessions with activity on that day, so a session spanning midnight is counted on both days; the Total row shows unique sessions (main plus subagents).
 
 ## Sessions
 
 | Created | Title | Type | Exec | Outcome |
 | --- | --- | --- | ---: | --- |
-| 2026-01-01 | Example session | main | 1.0h | succeeded |
+| 2026-01-01 | Example session | main | 40m | succeeded |
+| 2026-01-01 | Second session | main | 20m | - |
 
 ---
 

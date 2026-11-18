@@ -117,8 +117,17 @@ sessions. Invalid arguments produce a usage message instead of a report.
 Wall-clock session duration is not collected or reported: waiting for the next
 prompt is not work. OpenCode stores only the final `busy`/`idle` timestamps per
 session, so older execution windows have to be reconstructed from the message
-stream. Daily totals are attributed to UTC calendar days and intervals are
-split at midnight.
+stream.
+
+**By day (UTC):** execution intervals are split at midnight. Prompts, steps,
+and tool calls are attributed to the UTC day of the message that produced
+them. Tokens are stored per session in `session_v2`; message-level usage is
+attributed to the day of each assistant message, and the remainder — for
+example an unfinished last step with no recorded tokens — is attributed to the
+session's creation day, so the day rows always sum to the report totals. The
+Sessions column counts sessions with activity on that day, so a session
+spanning midnight is counted on both days; the Total row shows unique sessions
+(main plus subagents).
 
 ## Installing the plugin
 
@@ -182,8 +191,9 @@ node --test tests/command.test.mjs
 ```
 
 The Python tests build a synthetic SQLite database with the relevant OpenCode
-tables. They check scope matching, worktree inclusion, daily splitting,
-subagent handling, time filters, the read-only guard, and the rendered Markdown.
+tables. They check scope matching, worktree inclusion, daily splitting and
+per-day attribution of prompts, steps, tool calls, and tokens, subagent
+handling, time filters, the read-only guard, and the rendered Markdown.
 The Node test transpiles `src/index.ts`, stubs `@opencode/plugin` and `python3`,
 then checks command argument parsing and that both entry points pass the right
 flags and write both output files. It needs the TypeScript compiler; set

@@ -210,6 +210,45 @@ def count_tool_calls(row: sqlite3.Row) -> int:
     return sum(1 for part in data.get("content", []) if part.get("type") == "tool")
 
 
+def _token_count(value: Any) -> int:
+    return int(value) if isinstance(value, (int, float)) else 0
+
+
+def message_tokens(row: sqlite3.Row) -> dict[str, int]:
+    """Token usage recorded on one assistant message; zeros when absent.
+
+    OpenCode stores usage in ``data.tokens`` as ``input``/``output``/
+    ``reasoning`` plus ``cache.read``. The last step of an unfinished session
+    can carry no token data, which the per-session reconciliation covers.
+    """
+    try:
+        data = json.loads(row["data"])
+    except (TypeError, ValueError):
+        data = {}
+    tokens = data.get("tokens") if isinstance(data.get("tokens"), dict) else {}
+    cache = tokens.get("cache") if isinstance(tokens.get("cache"), dict) else {}
+    return {
+        "input": _token_count(tokens.get("input")),
+        "output": _token_count(tokens.get("output")),
+        "reasoning": _token_count(tokens.get("reasoning")),
+        "cache_read": _token_count(cache.get("read")),
+    }
+
+
+def new_day_bucket() -> dict[str, int]:
+    return {
+        "exec_ms": 0,
+        "sessions": 0,
+        "prompts": 0,
+        "steps": 0,
+        "tool_calls": 0,
+        "tokens_input": 0,
+        "tokens_output": 0,
+        "tokens_reasoning": 0,
+        "tokens_cache_read": 0,
+    }
+
+
 def execution_intervals(
     messages: list[sqlite3.Row], created: int, updated: int
 ) -> list[Interval]:
@@ -284,17 +323,70 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
             busy = max(0, int(row["time_idle"]) - int(row["time_busy"]))
 
         daily_exec = split_by_day(intervals)
-        for day, exec_on_day in daily_exec.items():
-            bucket = days.setdefault(day, {"exec_ms": 0, "steps": 0, "sessions": 0})
-            bucket["exec_ms"] += exec_on_day
-            bucket["sessions"] += 1
+        day_prompts: dict[str, int] = {}
+        day_steps: dict[str, int] = {}
+        day_tools: dict[str, int] = {}
+        day_tokens: dict[str, dict[str, int]] = {}
+        message_token_sums = {"input": 0, "output": 0, "reasoning": 0, "cache_read": 0}
+        for message in messages:
+            kind = message["type"]
+            if kind not in ("user", "assistant"):
+                continue
+            day = day_key(int(message["time_created"] or created))
+            if kind == "user":
+                day_prompts[day] = day_prompts.get(day, 0) + 1
+                continue
+            day_steps[day] = day_steps.get(day, 0) + 1
+            day_tools[day] = day_tools.get(day, 0) + count_tool_calls(message)
+            bucket = day_tokens.setdefault(
+                day, {"input": 0, "output": 0, "reasoning": 0, "cache_read": 0}
+            )
+            for name, value in message_tokens(message).items():
+                bucket[name] += value
+                message_token_sums[name] += value
 
-        steps = sum(1 for message in messages if message["type"] == "assistant")
-        prompts = sum(1 for message in messages if message["type"] == "user")
-        tools = sum(count_tool_calls(message) for message in messages if message["type"] == "assistant")
+        session_tokens = {
+            "input": int(row["tokens_input"]),
+            "output": int(row["tokens_output"]),
+            "reasoning": int(row["tokens_reasoning"]),
+            "cache_read": int(row["tokens_cache_read"]),
+        }
+        residual = {
+            name: session_tokens[name] - message_token_sums[name] for name in session_tokens
+        }
         created_day = day_key(created)
-        days.setdefault(created_day, {"exec_ms": 0, "steps": 0, "sessions": 0})
-        days[created_day]["steps"] += steps
+        if any(residual.values()):
+            bucket = day_tokens.setdefault(
+                created_day, {"input": 0, "output": 0, "reasoning": 0, "cache_read": 0}
+            )
+            for name, value in residual.items():
+                bucket[name] += value
+
+        steps = sum(day_steps.values())
+        prompts = sum(day_prompts.values())
+        tools = sum(day_tools.values())
+
+        # A day row exists only where the session had activity, and the
+        # Sessions column counts sessions with activity on that day.
+        active_days = set(daily_exec) | set(day_prompts) | set(day_steps)
+        if any(residual.values()):
+            active_days.add(created_day)
+        for day in active_days:
+            days.setdefault(day, new_day_bucket())["sessions"] += 1
+        for day, exec_on_day in daily_exec.items():
+            days.setdefault(day, new_day_bucket())["exec_ms"] += exec_on_day
+        for day, count_on_day in day_prompts.items():
+            days.setdefault(day, new_day_bucket())["prompts"] += count_on_day
+        for day, count_on_day in day_steps.items():
+            days.setdefault(day, new_day_bucket())["steps"] += count_on_day
+        for day, count_on_day in day_tools.items():
+            days.setdefault(day, new_day_bucket())["tool_calls"] += count_on_day
+        for day, kinds in day_tokens.items():
+            bucket = days.setdefault(day, new_day_bucket())
+            bucket["tokens_input"] += kinds["input"]
+            bucket["tokens_output"] += kinds["output"]
+            bucket["tokens_reasoning"] += kinds["reasoning"]
+            bucket["tokens_cache_read"] += kinds["cache_read"]
 
         sessions.append({
             "id": row["id"],
@@ -332,7 +424,7 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         totals["cost"] += float(row["cost"])
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {
             "names": sorted(scope.names),
             "project_ids": sorted(scope.project_ids),

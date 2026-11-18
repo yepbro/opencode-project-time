@@ -62,14 +62,31 @@ def render(snapshot: dict[str, Any]) -> str:
         "",
         "## By day (UTC)",
         "",
-        "| Day | Execution | Sessions |",
-        "| --- | ---: | ---: |",
+        "| Day | Execution | Sessions | Prompts | Steps | Tool calls "
+        "| Tokens in | Tokens out | Reasoning | Cache read |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for day in snapshot["days"]:
         lines.append(
-            f"| {day['date']} | {duration(day['exec_ms'])} | {day['sessions']} |"
+            f"| {day['date']} | {duration(day['exec_ms'])} | {day['sessions']} | "
+            f"{day.get('prompts', 0)} | {day.get('steps', 0)} | {day.get('tool_calls', 0)} | "
+            f"{day.get('tokens_input', 0):,} | {day.get('tokens_output', 0):,} | "
+            f"{day.get('tokens_reasoning', 0):,} | {day.get('tokens_cache_read', 0):,} |"
         )
     lines.extend([
+        f"| Total | {duration(totals['exec_ms'])} | {totals['sessions'] + totals['subagents']} | "
+        f"{totals['prompts']} | {totals['steps']} | {totals['tool_calls']} | "
+        f"{totals['tokens_input']:,} | {totals['tokens_output']:,} | "
+        f"{totals['tokens_reasoning']:,} | {totals['tokens_cache_read']:,} |",
+        "",
+        "Execution time is split at UTC midnight. Prompts, steps, tool calls, "
+        "and tokens are attributed to the UTC day of the message that produced "
+        "them; when a session's recorded token totals exceed the sum of its "
+        "messages (for example an unfinished last step), the remainder is "
+        "attributed to the session's creation day. Sessions counts sessions "
+        "with activity on that day, so a session spanning midnight is counted "
+        "on both days; the Total row shows unique sessions (main plus "
+        "subagents).",
         "",
         "## Sessions",
         "",
