@@ -9,6 +9,8 @@ not the wall-clock time people spent in the editor. It reconstructs agent
 execution time from OpenCode's own session records, using only read-only
 queries against its local SQLite database.
 
+![Example of a generated project time report](assets/report-example.png)
+
 The package contains four parts:
 
 - `src/index.ts` — the server plugin: registers the skill, a `time_project_report`
