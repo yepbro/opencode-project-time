@@ -9,25 +9,24 @@
 
 ## Time summary
 
-| Metric | Value | Share of wall clock |
-| --- | ---: | ---: |
-| Wall clock | 2.0h | 100.0% |
-| Execution (reconstructed) | 1.0h | 50.0% |
-| Last busy window | 30m | 25.0% |
+| Metric | Value |
+| --- | ---: |
+| Execution (reconstructed) | 1.0h |
+| Last busy window | 30m |
 
-Wall clock spans session creation to last update: it includes waiting for the next prompt and server restarts. Execution time sums the intervals from the first assistant step to each `idle` message, so tool and shell waits are included. Last busy window reproduces `time_idle - time_busy` from `session_v2`, i.e. only the final execution of each session.
+Execution time sums the intervals from the first assistant step to each `idle` message, so tool and shell waits are included. Last busy window reproduces `time_idle - time_busy` from `session_v2`, i.e. only the final execution of each session.
 
 ## By day (UTC)
 
-| Day | Wall clock | Execution | Sessions |
-| --- | ---: | ---: | ---: |
-| 2026-01-01 | 2.0h | 1.0h | 2 |
+| Day | Execution | Sessions |
+| --- | ---: | ---: |
+| 2026-01-01 | 1.0h | 2 |
 
 ## Sessions
 
-| Created | Title | Type | Wall | Exec | Outcome |
-| --- | --- | --- | ---: | ---: | --- |
-| 2026-01-01 | Example session | main | 2.0h | 1.0h | succeeded |
+| Created | Title | Type | Exec | Outcome |
+| --- | --- | --- | ---: | --- |
+| 2026-01-01 | Example session | main | 1.0h | succeeded |
 
 ---
 

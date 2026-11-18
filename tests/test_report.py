@@ -18,7 +18,6 @@ def snapshot(**overrides):
         "range": {"from": "2026-01-01T23:50:00+00:00", "to": "2026-01-02T00:30:00+00:00"},
         "include_subagents": False,
         "totals": {
-            "wall_ms": 2_400_000,
             "exec_ms": 1_200_000,
             "busy_ms": 600_000,
             "sessions": 1,
@@ -34,8 +33,8 @@ def snapshot(**overrides):
             "cost": 0.25,
         },
         "days": [
-            {"date": "2026-01-01", "wall_ms": 600_000, "exec_ms": 300_000, "steps": 1, "sessions": 1},
-            {"date": "2026-01-02", "wall_ms": 1_800_000, "exec_ms": 900_000, "steps": 1, "sessions": 1},
+            {"date": "2026-01-01", "exec_ms": 300_000, "steps": 1, "sessions": 1},
+            {"date": "2026-01-02", "exec_ms": 900_000, "steps": 1, "sessions": 1},
         ],
         "sessions": [
             {
@@ -45,7 +44,6 @@ def snapshot(**overrides):
                 "subagent": False,
                 "created": "2026-01-01T23:50:00+00:00",
                 "updated": "2026-01-02T00:30:00+00:00",
-                "wall_ms": 2_400_000,
                 "exec_ms": 1_200_000,
                 "busy_ms": 600_000,
                 "outcome": "succeeded",
@@ -61,11 +59,10 @@ class ReportTests(unittest.TestCase):
         text = report.render(snapshot())
         self.assertIn("# Project time report", text)
         self.assertIn("EunomiaSync", text)
-        self.assertIn("| Wall clock | 40m | 100.0% |", text)
-        self.assertIn("| Execution (reconstructed) | 20m | 50.0% |", text)
-        self.assertIn("| Last busy window | 10m | 25.0% |", text)
-        self.assertIn("| 2026-01-01 | 10m | 5m | 1 |", text)
-        self.assertIn("| 2026-01-02 | 30m | 15m | 1 |", text)
+        self.assertIn("| Execution (reconstructed) | 20m |", text)
+        self.assertIn("| Last busy window | 10m |", text)
+        self.assertIn("| 2026-01-01 | 5m | 1 |", text)
+        self.assertIn("| 2026-01-02 | 15m | 1 |", text)
         self.assertIn("Session \\| with pipe", text)
         self.assertIn("succeeded", text)
         self.assertNotIn("{{", text)
@@ -73,11 +70,10 @@ class ReportTests(unittest.TestCase):
 
     def test_empty_snapshot_renders_without_division_error(self) -> None:
         empty = snapshot(days=[], sessions=[])
-        empty["totals"]["wall_ms"] = 0
         empty["totals"]["exec_ms"] = 0
         empty["totals"]["cost"] = 0.0
         text = report.render(empty)
-        self.assertIn("| Wall clock | 0m | 0.0% |", text)
+        self.assertIn("| Execution (reconstructed) | 0m |", text)
         self.assertIn("## By day (UTC)", text)
 
 

@@ -49,13 +49,14 @@ The `/project-time` command asks the model to use the skill.
 
 | Metric | Definition | What it includes |
 | --- | --- | --- |
-| Wall clock | `time_updated - time_created` per session | Everything: waiting for the next prompt, server restarts |
 | Execution | First assistant message to each `idle` message in `session_message` | Model work, tool calls, waiting for shell and subagent results |
 | Last busy window | `time_idle - time_busy` in `session_v2` | Only the final execution of a session |
 
-OpenCode stores only the final `busy`/`idle` timestamps per session, so older
-execution windows have to be reconstructed from the message stream. Daily totals
-are attributed to UTC calendar days and intervals are split at midnight.
+Wall-clock session duration is not collected or reported: waiting for the next
+prompt is not work. OpenCode stores only the final `busy`/`idle` timestamps per
+session, so older execution windows have to be reconstructed from the message
+stream. Daily totals are attributed to UTC calendar days and intervals are
+split at midnight.
 
 ## Installing the plugin (not done by this repository)
 

@@ -39,14 +39,15 @@ using OpenCode's own session records. The source database is never modified.
    python3 scripts/report.py var/eunomiasync-snapshot.json --out var/eunomiasync-report.md
    ```
 
-4. Read the generated Markdown, report the headline numbers to the owner (wall
-   clock, execution time, sessions, days covered) and give both file paths.
+4. Read the generated Markdown, report the headline numbers to the owner
+   (execution time, last busy window, sessions, days covered) and give both
+   file paths.
 
 ## Optional flags
 
 - `--since` / `--until` accept ISO-8601 timestamps and filter sessions.
 - `--include-subagents` adds child sessions to the totals. By default they are
-  excluded from totals so overlapping wall-clock windows do not inflate time.
+  excluded from totals so parallel child work does not inflate time.
 - `--db PATH` overrides the default database location
   (`~/.local/share/opencode/opencode.db`).
 
@@ -54,9 +55,11 @@ using OpenCode's own session records. The source database is never modified.
 
 | Metric | Source | Includes |
 | --- | --- | --- |
-| Wall clock | `time_updated - time_created` for each session | Waiting for the next prompt, server restarts, everything |
 | Execution | First assistant message to each `idle` message in `session_message` | Model generation, tool calls, waiting for shell/subagent results; not user thinking time |
 | Last busy window | `time_idle - time_busy` in `session_v2` | Only the final execution of each session; OpenCode does not store earlier windows as durations |
+
+Wall-clock session duration is deliberately not collected or reported. Time
+spent waiting for the next prompt is not work and must not enter the totals.
 
 Timing is attributed to UTC calendar days, splitting intervals at midnight.
 Token and cost figures come from the same session rows; report them as
@@ -64,12 +67,11 @@ recorded, without recomputing prices.
 
 ## Interpreting a report
 
-Wall clock is an upper bound on project involvement, not a measure of active
-work. Execution is the best available approximation of active time. The last
-busy window is a lower bound and is useful mainly as a consistency check.
-
-If a session has no `idle` message (interrupted run), it contributes wall clock
-but no execution time; mention that when summarizing a report with such rows.
+Execution is the best available approximation of active time. The last busy
+window is a lower bound covering only the final execution of each session and
+is useful mainly as a consistency check. A running session has no recorded
+`idle` yet and therefore contributes zero execution time; mention that when
+summarizing a report with such rows.
 
 ## Troubleshooting
 

@@ -35,7 +35,7 @@ export default Plugin.define({
         id: Skill.ID.make('project-time-report'),
         name: Skill.Name.make('Project time report'),
         description:
-          'Generate a read-only OpenCode project time report with wall clock, execution time, daily breakdown, and session details.',
+          'Generate a read-only OpenCode project time report with execution time, daily breakdown, and session details.',
         path: Skill.Info.fields.path.make(skillPath),
         content: skillContent,
       })

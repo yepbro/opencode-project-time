@@ -193,7 +193,6 @@ def in_range(start: int, end: int, args: argparse.Namespace) -> bool:
 def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[str, Any]:
     scope = resolve_scope(connection, args)
     totals = {
-        "wall_ms": 0,
         "exec_ms": 0,
         "busy_ms": 0,
         "sessions": 0,
@@ -224,27 +223,22 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
         finished.append(updated)
         messages = message_rows(connection, row["id"])
         intervals = execution_intervals(messages, created, updated)
-        wall = max(0, updated - created)
         exec_ms = sum(item.end - item.start for item in intervals)
         busy = 0
         if row["time_busy"] is not None and row["time_idle"] is not None:
             busy = max(0, int(row["time_idle"]) - int(row["time_busy"]))
 
-        daily_wall = split_by_day([Interval(created, updated)])
         daily_exec = split_by_day(intervals)
-        for day in set(daily_wall) | set(daily_exec):
-            bucket = days.setdefault(
-                day, {"wall_ms": 0, "exec_ms": 0, "steps": 0, "sessions": 0}
-            )
-            bucket["wall_ms"] += daily_wall.get(day, 0)
-            bucket["exec_ms"] += daily_exec.get(day, 0)
+        for day, exec_on_day in daily_exec.items():
+            bucket = days.setdefault(day, {"exec_ms": 0, "steps": 0, "sessions": 0})
+            bucket["exec_ms"] += exec_on_day
             bucket["sessions"] += 1
 
         steps = sum(1 for message in messages if message["type"] == "assistant")
         prompts = sum(1 for message in messages if message["type"] == "user")
         tools = sum(count_tool_calls(message) for message in messages if message["type"] == "assistant")
         created_day = day_key(created)
-        days.setdefault(created_day, {"wall_ms": 0, "exec_ms": 0, "steps": 0, "sessions": 0})
+        days.setdefault(created_day, {"exec_ms": 0, "steps": 0, "sessions": 0})
         days[created_day]["steps"] += steps
 
         sessions.append({
@@ -254,7 +248,6 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
             "subagent": is_subagent,
             "created": iso(created),
             "updated": iso(updated),
-            "wall_ms": wall,
             "exec_ms": exec_ms,
             "busy_ms": busy,
             "outcome": row["idle_outcome"],
@@ -269,7 +262,6 @@ def collect(connection: sqlite3.Connection, args: argparse.Namespace) -> dict[st
             "cost": float(row["cost"]),
         })
 
-        totals["wall_ms"] += wall
         totals["exec_ms"] += exec_ms
         totals["busy_ms"] += busy
         totals["sessions"] += 0 if is_subagent else 1

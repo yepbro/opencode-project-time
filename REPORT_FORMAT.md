@@ -5,15 +5,17 @@ five fixed sections in this order:
 
 1. **Title and metadata** — project names, UTC period covered, session counts,
    prompt/step/tool-call counts, token totals, and recorded cost.
-2. **Time summary** — a three-row table with wall clock, reconstructed
-   execution time, and last busy window. Each row gives an absolute duration
-   and its share of wall clock.
-3. **Metric explanation** — a short paragraph stating what wall clock and
-   execution time include.
-4. **By day (UTC)** — one row per calendar day with wall clock, execution time,
-   and the number of sessions active on that day.
+2. **Time summary** — a two-row table with reconstructed execution time and
+   last busy window, each as an absolute duration.
+3. **Metric explanation** — a short paragraph stating what execution time and
+   the last busy window include.
+4. **By day (UTC)** — one row per calendar day with execution time and the
+   number of sessions with activity on that day.
 5. **Sessions** — one row per session with creation date, title, type (main or
-   subagent), wall clock, execution time, and idle outcome.
+   subagent), execution time, and idle outcome.
+
+Wall-clock session duration is deliberately absent from the snapshot and the
+report.
 
 Durations are rounded: minutes below one hour (`19m`), one decimal of an hour
 at or above one hour (`8.8h`). A pipe character in a session title is escaped.
@@ -32,23 +34,22 @@ Example skeleton:
 
 ## Time summary
 
-| Metric | Value | Share of wall clock |
-| --- | ---: | ---: |
-| Wall clock | 2.0h | 100.0% |
-| Execution (reconstructed) | 1.0h | 50.0% |
-| Last busy window | 30m | 25.0% |
+| Metric | Value |
+| --- | ---: |
+| Execution (reconstructed) | 1.0h |
+| Last busy window | 30m |
 
 ## By day (UTC)
 
-| Day | Wall clock | Execution | Sessions |
-| --- | ---: | ---: | ---: |
-| 2026-01-01 | 2.0h | 1.0h | 2 |
+| Day | Execution | Sessions |
+| --- | ---: | ---: |
+| 2026-01-01 | 1.0h | 2 |
 
 ## Sessions
 
-| Created | Title | Type | Wall | Exec | Outcome |
-| --- | --- | --- | ---: | ---: | --- |
-| 2026-01-01 | Example session | main | 2.0h | 1.0h | succeeded |
+| Created | Title | Type | Exec | Outcome |
+| --- | --- | --- | ---: | --- |
+| 2026-01-01 | Example session | main | 1.0h | succeeded |
 ```
 
 A complete generated example for EunomiaSync is written to

@@ -30,3 +30,24 @@ Consequences: the report is an approximation of active work, not a billable
 timesheet. Wall clock is an upper bound and the last busy window is a lower
 bound. No OpenCode configuration file or database object is changed by this
 project.
+
+Note: the wall-clock metric and the wording around it were superseded by D-002.
+
+## D-002 — Remove wall-clock time from collection and reports
+
+Context: the owner clarified that time waiting for the next prompt is not work.
+A session with two prompts a day apart would otherwise contribute a full day
+of wall clock even though the agent was active for minutes.
+
+Decision:
+
+- Drop `wall_ms` from the snapshot schema, all totals, day buckets, and session
+  rows. Drop the wall column and the wall-derived percentage from the Markdown
+  report.
+- Keep execution time (first assistant step to each `idle` message, including
+  tool and shell waits) and the last busy window as the only time metrics.
+- Keep session creation/update timestamps only as internal inputs for
+  filtering, interval clipping, and the calendar range printed in the report.
+
+Consequences: snapshots from before this decision are not schema-compatible
+with the new renderer; regenerate them with `scripts/collect.py`.
