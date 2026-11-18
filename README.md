@@ -4,8 +4,10 @@
 > `Plugin.define`). It does not load in OpenCode 1. The standalone `collect.py`
 > and `report.py` scripts can still be run directly.
 
-An OpenCode plugin that reports how much time was spent on a project, using
-only read-only queries against OpenCode's local SQLite database.
+An OpenCode plugin that reports how much time **agents** spent on a project —
+not the wall-clock time people spent in the editor. It reconstructs agent
+execution time from OpenCode's own session records, using only read-only
+queries against its local SQLite database.
 
 The package contains four parts:
 
@@ -118,18 +120,59 @@ session, so older execution windows have to be reconstructed from the message
 stream. Daily totals are attributed to UTC calendar days and intervals are
 split at midnight.
 
-## Installing the plugin (not done by this repository)
+## Installing the plugin
 
-No OpenCode configuration is changed here. To load the plugin, add its directory
-to `plugins` in `opencode.jsonc` (global or project-local):
+Requires OpenCode 2, Node.js with npm, and Python 3 on `PATH`. The plugin reads
+`~/.local/share/opencode/opencode.db` read-only; no database setup is needed.
+
+Install the package from GitHub:
+
+```sh
+opencode plugin add github:yepbro/opencode-project-time
+```
+
+`plugin add` installs the package and adds it to `plugins` in the global
+`~/.config/opencode/opencode.jsonc`. You can also add the specifier manually:
 
 ```jsonc
 {
-  "plugins": ["/home/brooks/projects/utils/opencode-project-time"]
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["github:yepbro/opencode-project-time"]
 }
 ```
 
-Optional plugin options: `dbPath`, `outputDir`.
+Configuration changes are picked up automatically. If the plugin does not show
+up right after installation, run `opencode service restart`. Verify with:
+
+```sh
+opencode plugin list
+```
+
+The list should include `opencode-project-time`. Open a session and run
+`/project-time` or ask "How long did we work on this project?".
+
+Optional options can be set with the object form, for example to move the
+reports out of the installed package's `var/` directory:
+
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "github:yepbro/opencode-project-time",
+      "options": {
+        "dbPath": "/path/to/opencode.db",
+        "outputDir": "/path/to/writable/report-dir"
+      }
+    }
+  ]
+}
+```
+
+To remove the plugin:
+
+```sh
+opencode plugin remove github:yepbro/opencode-project-time
+```
 
 ## Tests
 

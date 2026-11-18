@@ -1,6 +1,6 @@
 ---
 name: project-time-report
-description: Build a time and activity report for an OpenCode project from the local OpenCode SQLite database. Use when the user asks how long work on a project took, wants a per-project time or effort report, a daily breakdown of agent activity, or wants to compare time across sessions - even when they do not mention this plugin. The database is always read-only.
+description: Build a report of how much time OpenCode agents spent on a project from the local OpenCode SQLite database. Use when the user asks how long the agents worked on a project, wants a per-project agent time or effort report, a daily breakdown of agent activity, or wants to compare time across sessions - even when they do not mention this plugin. The database is always read-only.
 ---
 
 # Project time report

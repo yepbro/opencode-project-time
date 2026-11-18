@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Read-only OpenCode project time reports: plugin, skill, scripts, and report format",
+  "description": "Read-only reports of how much time OpenCode agents spent on a project: plugin, skill, scripts, and report format",
   "exports": {
     ".": "./src/index.ts"
   },

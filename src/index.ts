@@ -161,7 +161,7 @@ export default Plugin.define({
         id: Skill.ID.make('project-time-report'),
         name: Skill.Name.make('Project time report'),
         description:
-          'Generate a read-only OpenCode project time report with execution time, daily breakdown, and session details.',
+          'Generate a read-only report of how much time OpenCode agents spent on a project, with execution time, daily breakdown, and session details.',
         path: Skill.Info.fields.path.make(skillPath),
         content: skillContent,
       })
@@ -170,12 +170,12 @@ export default Plugin.define({
     await ctx.tool.transform((editor) => {
       editor.namespace({
         name: 'time',
-        description: 'Read-only project timing reports from OpenCode sessions',
+        description: 'Read-only reports of agent time spent on OpenCode projects',
       })
       editor.add({
         name: 'project_report',
         description:
-          'Collect session timing data for an OpenCode project and write a Markdown report. The source database is opened read-only.',
+          'Collect agent timing data for an OpenCode project and write a Markdown report. The source database is opened read-only.',
         input: {
           type: 'object',
           properties: {
@@ -206,7 +206,7 @@ export default Plugin.define({
     await ctx.command.transform((editor) => {
       editor.add({
         name: 'project-time',
-        description: `Generate a read-only time report. Usage: ${usage}`,
+        description: `Generate a read-only agent time report. Usage: ${usage}`,
         execute: async ({ sessionID, prompt }) => {
           try {
             const result = await generateReport(parseCommand(prompt.text), reportOptions)
